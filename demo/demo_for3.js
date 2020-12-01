@@ -1,7 +1,7 @@
 (function() {
 
 const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-let n = 0;
+let count = 0;
 
 // 测试数组不变,state变化时列表更新逻辑
 class Demo extends vueact.Component {
@@ -13,8 +13,8 @@ class Demo extends vueact.Component {
         };
     }
     handleChange() {
-        n++;
-        const a = str.charAt(n % str.length);
+        count++;
+        const a = str.charAt(count % str.length);
         this.setState({ a });
     }
     render() {

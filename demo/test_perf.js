@@ -1,5 +1,9 @@
 (function() {
 
+// 性能测试
+
+const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 class Demo extends vueact.Component {
     constructor(props) {
         super(props);
@@ -9,7 +13,6 @@ class Demo extends vueact.Component {
         };
     }
     handleStart() {
-        const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         const len = str.length;
         let i = 0;
         const s0 = Date.now();

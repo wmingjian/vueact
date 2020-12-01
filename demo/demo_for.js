@@ -1,9 +1,10 @@
 (function() {
 
+// 测试复杂数组更新
+
 const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let uid = 3;
 
-// 测试复杂数组更新
 class Demo extends vueact.Component {
     constructor(props) {
         super(props);

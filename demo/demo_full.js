@@ -2,6 +2,8 @@
 
 // 复杂实例
 
+const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
 class List extends vueact.Component {
     constructor(props) {
         super(props);
@@ -60,7 +62,7 @@ class Demo extends vueact.Component {
     }
     handlePushItem() {
         const { list, arr } = this.state;
-        list.push('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'.charAt(list.length));
+        list.push(str.charAt(list.length));
         arr.push(arr.length);
         this.setState({ list, arr });
     }
@@ -72,7 +74,7 @@ class Demo extends vueact.Component {
     }
     render() {
         return `
-            <div id="1" _action="$act">
+            <div id="demo_full" _action="$act">
                 {a}+{b}={a+b};
                 <i class="$a">####</i>
                 {a}/{b}={a/b};
@@ -97,7 +99,7 @@ class Demo extends vueact.Component {
     }
 }
 
-vueact.runDemo('demo0', () => {
+vueact.runDemo('demo_full', () => {
     return vueact.render('<Demo x="abc" y="{123}" z="{true}" />'/*`
         <div id="demo0">
             <a href="https://www.baidu.com" target="_blank">baidu</a>

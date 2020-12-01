@@ -1,6 +1,7 @@
 (function() {
 
 // 测试if条件更新
+
 class Demo extends vueact.Component {
     constructor(props) {
         super(props);
