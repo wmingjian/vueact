@@ -1,2 +1,3 @@
 # vueact
-an ui framework like vue+react, there is vdom, there is no diff algorithm.
+
+An ui framework like Vue + React, there is vdom, but there is no diff algorithm.

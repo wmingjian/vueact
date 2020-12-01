@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>vueact框架测试</title>
+    <style>
+        body,select{font-size:12px;}
+        ol,ul{list-style:none;margin:4px 0px;padding:0px;border:1px solid #ddd;}
+        #root{margin:4px 0;border:1px solid #ccc;padding:4px;}
+        #root input{margin-right:4px;border:1px solid #999;}
+        #root input[readonly]{background-color:#eee;}
+    </style>
+    <script src="../lib/vueact.js" charset="utf-8"></script>
+    <script>
+        function loadScript(url) {
+            var el = document.createElement('script');
+            el.charset = 'utf-8';
+            document.getElementsByTagName('head')[0].appendChild(el);
+            el.src = url;
+        }
+        window.onload = function() {
+            var select = document.querySelector('#demo_select');
+            select.onchange = function() {
+                // console.log(this.value);
+                loadScript('../demo/' + this.value + '.js');
+            };
+            loadScript('../demo/' + select.value + '.js');
+        };
+    </script>
+</head>
+<body>
+    <select id="demo_select">
+        <option value="demo_full">demo_full</option>
+        <option value="demo_var">demo_var</option>
+        <option value="demo_if">demo_if</option>
+        <option value="demo_for">demo_for</option>
+        <option value="demo_for2">demo_for2</option>
+        <option value="demo_for3">demo_for3</option>
+        <option value="test_perf">test_perf</option>
+    </select>
+    <div id="root"></div>
+</body>
+</html>

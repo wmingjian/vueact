@@ -1,0 +1,7 @@
+{
+    "name": "vueact",
+    "version": "0.0.1",
+    "description": "A framework like Vue + React, but there is no diff algorithm.",
+    "author": "wmingjian@qq.com",
+    "license": "MIT"
+}
