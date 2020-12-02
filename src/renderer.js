@@ -172,9 +172,9 @@ class Renderer {
             vnode.update(value);
         } else {
             vnode = model.createVNode({ value });
-            if (type === 'var') {
+            if (type === t('var')) {
                 this.block.addRef(__node.name, vnode);
-            } else if (type === 'exp') {
+            } else if (type === t('exp')) {
                 __node.value.replace(/(\w+)/g, (_0, name) => {
                     this.block.addRef(name, vnode);
                 });
@@ -217,7 +217,7 @@ class Renderer {
             for (const k in model.attrs) {
                 const v = model.attrs[k];
                 const t = typeof v;
-                if (t === 'string' || t === 'number' || t === 'boolean') {
+                if (isAtom(t)) {
                 } else if (v instanceof VarAttr) {
                     this.block.addRef(v.name, v);
                 } else if (v instanceof ExprAttr) {

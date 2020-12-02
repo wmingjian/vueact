@@ -5,19 +5,21 @@ function t(type) {
     if (!(type in types)) {
         types[type] = typeUid++;
     }
-    return type;
+    // return type;
+    return types[type];
 }
 
 function ast2fun(ast, options) {
     function formatProp(prop) {
-        const pt = typeof prop;
-        if (pt === 'string' || pt === 'number' || pt === 'boolean') {
+        const t = typeof prop;
+        if (isAtom(t)) {
             if (options.diff) {
                 return 0;
             }
             return JSON.stringify(prop);
-        } else if (pt === 'object') {
-            if (prop.type === t('expr')) {
+        } else if (t === 'object') {
+            const { type } = prop;
+            if (type === t('expr')) {
                 const sb = [];
                 prop.nodes.forEach(node => {
                     switch (node.type) {
@@ -36,7 +38,7 @@ function ast2fun(ast, options) {
                     }
                 });
                 return sb.join('+');
-            } else if (prop.type === t('var')) {
+            } else if (type === t('var')) {
                 return prop.name;
             }
         }
@@ -310,16 +312,18 @@ const parse = xml => {
         allNodes.push(node);
         return node;
     }
+    function compile(ast, options) {
+        const code = ast2fun(ast, options);
+        return new Function('h', '$', code);
+    }
     const allNodes = [];
-    const doc = this.doc = loadXMLString(xml);
+    const doc = loadXMLString(xml);
     const ast = parseVNode(null, doc.documentElement);
-    const ss = JSON.stringify(ast);
-    const func = ast2fun(ast, { type: true, tag: true }); // 生成完整代码
-    const func2 = ast2fun(ast, { type: false, tag: false, diff: true }); // 生成diff代码
+    // const ss = JSON.stringify(ast);
     return {
         root: ast,
         nodes: allNodes,
-        renderDom: new Function('h', '$', func),
-        renderDiff: new Function('h', '$', func2)
+        renderDom: compile(ast, { type: true, tag: true }), // 生成完整代码
+        renderDiff: compile(ast, { type: false, tag: false, diff: true }) // 生成diff代码
     };
 };

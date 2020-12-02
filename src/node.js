@@ -8,7 +8,7 @@ class VNode {
         this.data = data;
         this.type = type;
         this._el = null; // {Element}
-        if (!(type === 'if' && tag !== 'if')) {
+        if (!(type === t('if') && tag !== 'if')) {
             for (const k in model.deps) { // 根据model的deps添加
                 this.proto.addRef(k, this);
             }
@@ -271,7 +271,7 @@ class DomNode extends VNode {
             for (const k in attrs) {
                 const attr = attrs[k];
                 const t = typeof attr;
-                if (t === 'string' || t === 'number' || t === 'boolean') {
+                if (isAtom(t)) {
                     setAttr(el, k, attr);
                 } else if (attr instanceof AttrNode) {
                     let at = attr.attrType;

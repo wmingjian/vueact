@@ -35,6 +35,9 @@ function uid(type) {
     return uids[type]++;
 }
 
+function isAtom(t) { // primitive
+    return t === 'string' || t === 'number' || t === 'boolean';
+}
 function trim(str) {
     return str.replace(/^[\s\n]+|[\s\n]+$/g, '');
 }

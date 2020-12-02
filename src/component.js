@@ -47,10 +47,10 @@ class ComponentProto {
             if (k === '_action') {
                 C = ActionAttr;
             } else {
-                if (t === 'string' || t === 'number' || t === 'boolean') {
-                } else if (value.type === 'var') { // /^\$\w+$/.test(value)
+                if (isAtom(t)) {
+                } else if (value.type === t('var')) { // /^\$\w+$/.test(value)
                     C = VarAttr;
-                } else if (value.type === 'expr') { // indexOf('{') !== -1
+                } else if (value.type === t('expr')) { // indexOf('{') !== -1
                     C = ExprAttr;
                 }
             }
@@ -60,11 +60,11 @@ class ComponentProto {
     }
     parseVNode(parent, node) {
         let model = null;
-        const nt = typeof node;
-        if (nt === 'string' || nt === 'number' || nt === 'boolean') {
-            model = new AtomModel(this, parent, node, nt);
-        } else if (nt === 'object') {
-            const type = node.type === 'for' && node.tag !== 'for' ? 'list' : node.type;
+        const t = typeof node;
+        if (isAtom(t)) {
+            model = new AtomModel(this, parent, node, t);
+        } else if (t === 'object') {
+            const type = node.type === t('for') && node.tag !== 'for' ? 'list' : node.type;
             if (type in vueact.modelMap) {
                 const C = vueact.modelMap[type];
                 model = new C(this, parent, node);
