@@ -172,9 +172,9 @@ class Renderer {
             vnode.update(value);
         } else {
             vnode = model.createVNode({ value });
-            if (type === t('var')) {
+            if (type === _t('var')) {
                 this.block.addRef(__node.name, vnode);
-            } else if (type === t('exp')) {
+            } else if (type === _t('exp')) {
                 __node.value.replace(/(\w+)/g, (_0, name) => {
                     this.block.addRef(name, vnode);
                 });

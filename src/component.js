@@ -48,9 +48,9 @@ class ComponentProto {
                 C = ActionAttr;
             } else {
                 if (isAtom(t)) {
-                } else if (value.type === t('var')) { // /^\$\w+$/.test(value)
+                } else if (value.type === _t('var')) { // /^\$\w+$/.test(value)
                     C = VarAttr;
-                } else if (value.type === t('expr')) { // indexOf('{') !== -1
+                } else if (value.type === _t('expr')) { // indexOf('{') !== -1
                     C = ExprAttr;
                 }
             }
@@ -64,7 +64,7 @@ class ComponentProto {
         if (isAtom(t)) {
             model = new AtomModel(this, parent, node, t);
         } else if (t === 'object') {
-            const type = node.type === t('for') && node.tag !== 'for' ? 'list' : node.type;
+            const type = node.type === _t('for') && node.tag !== 'for' ? 'list' : node.type;
             if (type in vueact.modelMap) {
                 const C = vueact.modelMap[type];
                 model = new C(this, parent, node);

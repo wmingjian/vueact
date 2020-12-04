@@ -8,7 +8,7 @@ class VNode {
         this.data = data;
         this.type = type;
         this._el = null; // {Element}
-        if (!(type === t('if') && tag !== 'if')) {
+        if (!(type === _t('if') && tag !== 'if')) {
             for (const k in model.deps) { // 根据model的deps添加
                 this.proto.addRef(k, this);
             }

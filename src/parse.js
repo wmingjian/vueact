@@ -1,12 +1,11 @@
 let typeUid = 0;
 const types = {};
 
-function t(type) {
+function _t(type) {
     if (!(type in types)) {
         types[type] = typeUid++;
     }
-    // return type;
-    return types[type];
+    return type;
 }
 
 function ast2fun(ast, options) {
@@ -19,7 +18,7 @@ function ast2fun(ast, options) {
             return JSON.stringify(prop);
         } else if (t === 'object') {
             const { type } = prop;
-            if (type === t('expr')) {
+            if (type === _t('expr')) {
                 const sb = [];
                 prop.nodes.forEach(node => {
                     switch (node.type) {
@@ -38,7 +37,7 @@ function ast2fun(ast, options) {
                     }
                 });
                 return sb.join('+');
-            } else if (type === t('var')) {
+            } else if (type === _t('var')) {
                 return prop.name;
             }
         }
@@ -117,9 +116,9 @@ function ast2fun(ast, options) {
             return JSON.stringify(node);
         }
         const { type } = node;
-        if (type === t('dom') || type === t('component')) {
+        if (type === _t('dom') || type === _t('component')) {
             return formatNode(node, level);
-        } else if (type === t('if')) {
+        } else if (type === _t('if')) {
             const { id, tag, exp, props, children } = node;
             if (tag === 'if') {
                 return `h(${id},${f(type)}${ft(tag)}{exp:${formatProp(exp)}},` // TODO exp会计算两次，可能有副作用
@@ -128,14 +127,14 @@ function ast2fun(ast, options) {
             } else {
                 return formatNode({ ...node, props: { 'v-if': exp, ...props } }, level);
             }
-        } else if (type === t('for')) {
+        } else if (type === _t('for')) {
             const { id, tag, props, children, list, v, i } = node;
             if (tag === 'for') {
                 return `h(${id},${f(type)}${ft(tag)}{},${list},(${v},${i})=>${formatNodes(children, level)})`;
             } else {
                 return formatForNode(node, level);
             }
-        } else if (type === t('expr')) {
+        } else if (type === _t('expr')) {
             const sb = [];
             node.nodes.forEach(n => {
                 switch (n.type) {
@@ -154,14 +153,14 @@ function ast2fun(ast, options) {
                 }
             });
             return sb.join(',\n' + indent(level));
-        } else if (type === t('atom')) {
+        } else if (type === _t('atom')) {
             if (options.diff) {
                 return 0;
             }
             return 'h(' + node.id + ',' + f(node.type) + JSON.stringify(node.value) + ')';
-        } else if (type === t('var')) {
+        } else if (type === _t('var')) {
             return 'h(' + node.id + ',' + f(node.type) + node.name + ')';
-        } else if (type === t('exp')) {
+        } else if (type === _t('exp')) {
             return 'h(' + node.id + ',' + f(node.type) + node.value + ')';
         }
         console.error(node);
@@ -184,22 +183,22 @@ const parse = xml => {
             if (v !== '') {
                 if (expStart) {
                     if (/^\w+$/.test(v)) {
-                        nodes.push({ type: t('var'), name: v });
+                        nodes.push({ type: _t('var'), name: v });
                     } else {
-                        nodes.push({ type: t('exp'), value: v }); // TODO
+                        nodes.push({ type: _t('exp'), value: v }); // TODO
                     }
                 } else {
-                    nodes.push({ type: t('atom'), t: 'string', value: trim(v) });
+                    nodes.push({ type: _t('atom'), t: 'string', value: trim(v) });
                 }
             }
             expStart = !expStart;
         }
-        return { id: -1, type: t('expr'), nodes, text: str };
+        return { id: -1, type: _t('expr'), nodes, text: str };
     }
     function parseProp(value) {
         let v = value, a;
         if (value.charAt(0) === '$') {
-            v = { type: t('var'), name: value.substr(1) };
+            v = { type: _t('var'), name: value.substr(1) };
         } else if (value.indexOf('{') !== -1) {
             if (/^\{\d+\}$/.test(value)) {
                 v = parseInt(value.substring(1, value.length - 1), 10);
@@ -215,9 +214,9 @@ const parse = xml => {
     }
     function getType(tag) {
         if (/^[a-z\d]+$/.test(tag)) {
-            return t('dom');
+            return _t('dom');
         } else if (/^[A-Z]/.test(tag)) {
-            return t('component');
+            return _t('component');
         }
     }
     function parseVNode(parent, node) {
@@ -236,7 +235,7 @@ const parse = xml => {
                             const exp = nodeValue;
                             ifNode = {
                                 id: -1,
-                                type: t('if'),
+                                type: _t('if'),
                                 tag: 'if',
                                 props: {},
                                 children: [vn],
@@ -263,12 +262,12 @@ const parse = xml => {
                 }
                 if (ifNode) {
                 } else if (tag === 'if') {
-                    vn.type = t('if');
+                    vn.type = _t('if');
                     const { exp } = props;
                     delete props.exp;
                     vn.exp = parseProp(exp);
                 } else if (tag === 'for') {
-                    vn.type = t('for');
+                    vn.type = _t('for');
                     const { list } = props;
                     delete props.list;
                     const a = list.substr(1).split(',');
@@ -276,7 +275,7 @@ const parse = xml => {
                     vn.v = a[1];
                     vn.i = a[2];
                 } else if ('v-for' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
-                    vn.type = t('for');
+                    vn.type = _t('for');
                     const { 'v-for': list } = props;
                     delete props['v-for'];
                     const a = list.substr(1).split(',');
