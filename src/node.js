@@ -343,7 +343,7 @@ class ForNode extends BlockNode {
     }
     compare(arr, cb) {
         // 使用proxy观察数组变化，省掉数组diff逻辑
-        arr.$diff.exec(cb, this.model.__node.i !== ''); // 数组变更的diff数据
+        arr.$delegate.exec(cb, this.model.__node.i !== ''); // 数组变更的diff数据
     }
     removeNode(c) {
         const { blocks, holder } = this;
@@ -433,6 +433,120 @@ class ForNode extends BlockNode {
 }
 
 class ListNode extends ForNode {
+    constructor(model, data) {
+        super(model, data);
+        this.tag = model.tag;
+    }
+    render() {
+        const el = this.el || this.doc.createElement(this.tag);
+        this.children.forEach(c => {
+            pushElements(el, c.renderNode());
+        });
+        return el;
+    }
+}
+
+class ForEachNode extends BlockNode {
+    constructor(model, data) {
+        super(model, data);
+        const { __node, attrs } = model;
+        this.name = __node.list;
+        this.props = { ...attrs };
+        this.children = [];
+        this.blocks = {}; // [{Block}]
+        this.nodeList = [];
+        this.holder = null; // 占位符
+    }
+    createBlock(renderer, func, value, key) {
+        const block = renderer.openBlock();
+        const c = (this.fullFunc || func)(value, key);
+        renderer.closeBlock();
+        return { block, c };
+    }
+    render() {
+        const fragment = this.el || this.doc.createDocumentFragment();
+        this.children.forEach((c, i) => {
+            const el = c.renderNode();
+            el.setAttribute('__id', i);
+            pushElements(fragment, el);
+        });
+        return fragment;
+    }
+    renderAll(renderer, map, func) {
+        if (!this.fullFunc) {
+            this.fullFunc = func;
+        }
+        for (const k in map) {
+            const { block, c } = this.createBlock(renderer, func, map[k], k);
+            this.blocks[k] = block;
+            this.nodeList.push(c);
+            pushChildren(this.children, c);
+        }
+    }
+    compare(obj, cb) {
+        // 使用proxy观察对象变化，省掉对象diff逻辑
+        obj.$delegate.exec(cb, this.model.__node.i !== ''); // 对象变更的diff数据
+    }
+    removeNode(c) {
+        const { blocks, holder } = this;
+        if (blocks.length === 1) {
+            const ph = holder || (this.holder = this.doc.createComment('foreach ' + this.id));
+            const ref = c instanceof Array ? c[0].el : c.el;
+            ref.parentNode.insertBefore(ph, ref);
+        }
+        if (c instanceof Array) {
+            c.forEach(v => v.remove());
+        } else {
+            c.remove();
+        }
+    }
+    renderDiff(renderer, map, func) {
+        const { children, nodeList, blocks, holder } = this;
+        let n0;
+        const { parentNode } = nodeList.length === 0 // 如果删空了，会找不到parentNode
+            ? holder
+            : (
+                n0 = nodeList[0],
+                n0 instanceof Array ? n0[0].el : n0.el
+            );
+        this.compare(map, {
+            add: (k, value) => {
+                const { block, c } = this.createBlock(renderer, func, value, k);
+                const len = nodeList.length;
+                blocks[k] = block;
+                nodeList.push(c);
+                if (len === 0) {
+                    parentNode.removeChild(holder);
+                }
+                pushChildren(children, c);
+                pushElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+            },
+            mod: (k, value) => {
+                renderer.openBlock(blocks[k]);
+                func(value, k);
+                renderer.closeBlock();
+            },
+            del: (k, idx) => {
+                let c;
+                if (idx === 0) {
+                    c = nodeList.shift();
+                } else if (idx === nodeList.length - 1) {
+                    c = nodeList.pop();
+                } else {
+                    c = nodeList.splice(idx, 1);
+                }
+                delete blocks[k];
+                this.removeNode(c);
+                // TODO 更新children
+            }
+        });
+    }
+    update(renderer, map, func) {
+        this.renderDiff(renderer, map, func);
+    }
+}
+
+class MapNode extends ForEachNode {
     constructor(model, data) {
         super(model, data);
         this.tag = model.tag;

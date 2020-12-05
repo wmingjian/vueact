@@ -71,6 +71,8 @@ class Renderer {
                         break;
                     case 'for':
                     case 'list':
+                    case 'foreach':
+                    case 'map':
                         vn.update(this, argv[1], argv[2]);
                         break;
                     case 'dom':
@@ -96,6 +98,8 @@ class Renderer {
                         break;
                     case 'for':
                     case 'list':
+                    case 'foreach':
+                    case 'map':
                         vn = this.render_for(model, id, type, tag, ...argv);
                         break;
                     case 'dom':
@@ -133,6 +137,8 @@ class Renderer {
                     break;
                 case 'for':
                 case 'list':
+                case 'foreach':
+                case 'map':
                     vn = this.render_for(model, id, type, ...argv);
                     break;
                 case 'dom':
@@ -194,15 +200,18 @@ class Renderer {
         }
         return vnode;
     }
-    render_for(model, id, type, tag, props, list, func) {
+    render_for(model, id, type, tag, props, list_map, func) {
         const { all } = this.block;
         let vnode;
         if (id in all) {
             vnode = all[id];
-            vnode.update(this, list, func);
+            vnode.update(this, list_map, func);
         } else {
-            vnode = model.createVNode({ props, list });
-            vnode.renderAll(this, list, func);
+            vnode = model.createVNode(type === 'for'
+                ? { props, list: list_map }
+                : { props, map: list_map }
+            );
+            vnode.renderAll(this, list_map, func);
         }
         return vnode;
     }

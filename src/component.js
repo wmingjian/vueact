@@ -120,8 +120,9 @@ class ComponentProto {
     resetState() {
         const { state } = this.c;
         for (const k in state) {
-            if (state[k] instanceof Array) {
-                state[k].$diff.clear();
+            const v = state[k];
+            if (v instanceof Array || v instanceof Object && v !== null) {
+                v.$delegate.clear();
             }
         }
     }

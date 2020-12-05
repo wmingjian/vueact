@@ -111,6 +111,14 @@ function ast2fun(ast, options) {
         sb.push(')');
         return sb.join('');
     }
+    function formatForEachNode(node, level) {
+        const { id, type, tag, props, children } = node;
+        const sb = [`h(${id},${f(type)}${ft(tag)}${formatProps(props)}`];
+        const { map, v, k } = node;
+        sb.push(`,${map},(${v}${k !== '' ? ',' + k : ''})=>${formatNodes(children, level)}`);
+        sb.push(')');
+        return sb.join('');
+    }
     function node2jsx(node, level = 0) {
         if (typeof node === 'string') {
             return JSON.stringify(node);
@@ -128,11 +136,18 @@ function ast2fun(ast, options) {
                 return formatNode({ ...node, props: { 'v-if': exp, ...props } }, level);
             }
         } else if (type === _t('for')) {
-            const { id, tag, props, children, list, v, i } = node;
+            const { id, tag, children, list, v, i } = node;
             if (tag === 'for') {
                 return `h(${id},${f(type)}${ft(tag)}{},${list},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)})`;
             } else {
                 return formatForNode(node, level);
+            }
+        } else if (type === _t('foreach')) {
+            const { id, tag, children, map, v, k } = node;
+            if (tag === 'foreach') {
+                return `h(${id},${f(type)}${ft(tag)}{},${map},(${v}${k !== '' ? ',' + k : ''})=>${formatNodes(children, level)})`;
+            } else {
+                return formatForEachNode(node, level);
             }
         } else if (type === _t('expr')) {
             const sb = [];
@@ -274,6 +289,14 @@ const parse = xml => {
                     vn.list = a[0];
                     vn.v = a[1];
                     vn.i = a.length === 3 ? a[2] : '';
+                } else if (tag === 'foreach') {
+                    vn.type = _t('foreach');
+                    const { map } = props;
+                    delete props.map;
+                    const a = map.substr(1).split(',');
+                    vn.map = a[0];
+                    vn.v = a[1];
+                    vn.k = a.length === 3 ? a[2] : '';
                 } else if ('v-for' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
                     vn.type = _t('for');
                     const { 'v-for': list } = props;
@@ -282,6 +305,15 @@ const parse = xml => {
                     vn.list = a[0];
                     vn.v = a[1];
                     vn.i = a.length === 3 ? a[2] : '';
+                } else if ('v-foreach' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
+                    // vn._type = vn.type; // ''
+                    vn.type = _t('foreach');
+                    const { 'v-foreach': map } = props;
+                    delete props['v-foreach'];
+                    const a = map.substr(1).split(',');
+                    vn.map = a[0];
+                    vn.v = a[1];
+                    vn.k = a.length === 3 ? a[2] : '';
                 } else {
                     vn.type = getType(tag);
                 }

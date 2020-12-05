@@ -8,10 +8,13 @@ class Context {
     createComponentProto(C, props = {}) {
         const create = (C, props) => {
             const c = new C(props);
-            for (const k in c.state) {
-                const v = c.state[k];
+            const { state } = c;
+            for (const k in state) {
+                const v = state[k];
                 if (v instanceof Array) {
-                    c.state[k] = delegate.createArray(v);
+                    state[k] = delegate.createArray(v);
+                } else if (v instanceof Object && v !== null) {
+                    state[k] = delegate.createObject(v);
                 }
             }
             c.setState = (state, cb) => {
@@ -19,11 +22,11 @@ class Context {
             };
             return c;
         };
-        let c, tpl;
-        if (typeof C === 'function') {
+        let c, tpl, t = typeof C;
+        if (t === 'function') {
             c = create(C, props);
             tpl = c.render();
-        } else if (typeof C === 'string') {
+        } else if (t === 'string') {
             tpl = C;
             c = create(Component, {});
         } else {
@@ -34,13 +37,14 @@ class Context {
         return cp;
     }
     addTask(task) {
+        const { tasks } = this;
         const { cp, cb } = task;
-        if (!this.tasks.has(cp)) {
-            this.tasks.set(cp, task);
+        if (!tasks.has(cp)) {
+            tasks.set(cp, task);
             nextTick(() => {
                 cp.render();
                 cp.resetState(); // 数组diff数据清理
-                this.tasks.delete(cp);
+                tasks.delete(cp);
                 if (cb) cb();
             });
         }
@@ -59,6 +63,8 @@ const vueact = {
         dom: DomNode,
         for: ForNode,
         list: ListNode,
+        foreach: ForEachNode,
+        map: MapNode,
         component: ComponentNode,
         fragment: FragmentNode
     },
@@ -70,6 +76,8 @@ const vueact = {
         if: IfModel, // node.tag === 'if'
         for: ForModel,
         list: ListModel,
+        foreach: ForEachModel,
+        map: MapModel,
         dom: DomModel,
         component: ComponentModel
     },

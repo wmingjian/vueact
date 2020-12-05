@@ -147,10 +147,32 @@ class ForModel extends BlockModel {
     }
 }
 
+class ForEachModel extends BlockModel {
+    constructor(proto, parent, node) {
+        super(proto, parent, node);
+        this.type = 'foreach';
+        const name = this.name = node.map;
+        const v = this.getVarObj(name);
+        this.addDep(v.type, name);
+        const props = { ...node.props };
+        this.attrs = props;
+        this.nodes = this.buildChildren(this, node);
+    }
+}
+
 class ListModel extends ForModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'list';
+        this.tag = node.tag;
+    }
+}
+
+
+class MapModel extends ForEachModel {
+    constructor(proto, parent, node) {
+        super(proto, parent, node);
+        this.type = 'map';
         this.tag = node.tag;
     }
 }

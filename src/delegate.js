@@ -73,12 +73,53 @@ class ArrayDelegate {
     }
 }
 
+class ObjectDelegate {
+    constructor(obj) {
+        this.obj = obj;
+        this.keys = Object.keys(obj);
+        // this.map = {}; // emulate obj
+        this.queue = []; // diff数据
+    }
+    add(v) {
+        this.queue.push(v);
+    }
+    exec(cb) {
+        // let n = this.len;
+        // const { obj, keys, map } = this;
+        // map.length = n;
+        this.queue.forEach(v => {
+            const { act, k } = v;
+            switch (act) {
+                case 'add':
+                    cb.add(k, v.v);
+                    // map[k] = 'add';
+                    break;
+                case 'mod':
+                    cb.mod(k, v.v, v.old);
+                    // map[k] = 'mod';
+                    break;
+                case 'del':
+                    console.log('====', v.idx);
+                    cb.del(k, v.idx, v.old);
+                    // map[k] = 'del';
+                    break;
+            }
+        });
+        // for (const k in map) {
+        //     cb.mod({ idx: i, value: arr[i] });
+        // }
+    }
+    clear() {
+        this.queue.length = 0;
+    }
+}
+
 const delegate = {
     createArray(arr) {
         const d = new ArrayDelegate(arr);
         return new Proxy(arr, {
             get: (obj, prop) => {
-                if (prop === '$diff') {
+                if (prop === '$delegate') {
                     return d;
                 } else if (/^\d+$/.test(prop)) {
                 } else if (prop in arrProps) {
@@ -107,8 +148,45 @@ const delegate = {
         });
     },
     createObject(obj) {
+        const d = new ObjectDelegate(obj);
         return new Proxy(obj, {
-            // TODO
+            get: (obj, key) => {
+                if (key === '$delegate') {
+                    return d;
+                } else if (key === 'constructor') {
+                } else {
+                    console.log('get', key);
+                }
+                return obj[key];
+            },
+            set: (obj, key, value) => {
+                console.log('set', key, value);
+                if (key in obj) {
+                    d.add({ act: 'mod', k: key, v: value, old: obj[key] });
+                } else {
+                    d.add({ act: 'add', k: key, v: value });
+                    d.keys.push(key);
+                }
+                obj[key] = value;
+                return true;
+            },
+            deleteProperty: (obj, key) => {
+                if (key in obj) {
+                    console.log('delete', key);
+                    const { keys } = d;
+                    const idx = keys.indexOf(key);
+                    d.add({ act: 'del', k: key, idx, old: obj[key] });
+                    if (idx === 0) {
+                        keys.shift();
+                    } else if (idx === keys.length - 1) {
+                        keys.pop();
+                    } else {
+                        keys.splice(idx, 1);
+                    }
+                    delete obj[key];
+                }
+                return true;
+            }
         });
     }
 };
