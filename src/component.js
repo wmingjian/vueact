@@ -64,7 +64,11 @@ class ComponentProto {
         if (isAtom(t)) {
             model = new AtomModel(this, parent, node, t);
         } else if (t === 'object') {
-            const type = node.type === _t('for') && node.tag !== 'for' ? 'list' : node.type;
+            const type = node.type === _t('for') && node.tag !== 'for'
+                ? 'list'
+                : node.type === _t('foreach') && node.tag !== 'foreach'
+                    ? 'map'
+                    : node.type;
             if (type in vueact.modelMap) {
                 const C = vueact.modelMap[type];
                 model = new C(this, parent, node);

@@ -142,8 +142,6 @@ const delegate = {
                 if (key === '$delegate') {
                     return d;
                 } else if (key === 'constructor') {
-                } else {
-                    console.log('get', key);
                 }
                 return obj[key];
             },
