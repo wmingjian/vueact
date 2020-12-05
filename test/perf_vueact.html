@@ -21,7 +21,6 @@
         window.onload = function() {
             var select = document.querySelector('#demo_select');
             select.onchange = function() {
-                // console.log(this.value);
                 loadScript('../demo/' + this.value + '.js');
             };
             loadScript('../demo/' + select.value + '.js');

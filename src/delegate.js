@@ -77,37 +77,26 @@ class ObjectDelegate {
     constructor(obj) {
         this.obj = obj;
         this.keys = Object.keys(obj);
-        // this.map = {}; // emulate obj
         this.queue = []; // diff数据
     }
     add(v) {
         this.queue.push(v);
     }
     exec(cb) {
-        // let n = this.len;
-        // const { obj, keys, map } = this;
-        // map.length = n;
         this.queue.forEach(v => {
             const { act, k } = v;
             switch (act) {
                 case 'add':
                     cb.add(k, v.v);
-                    // map[k] = 'add';
                     break;
                 case 'mod':
                     cb.mod(k, v.v, v.old);
-                    // map[k] = 'mod';
                     break;
                 case 'del':
-                    console.log('====', v.idx);
                     cb.del(k, v.idx, v.old);
-                    // map[k] = 'del';
                     break;
             }
         });
-        // for (const k in map) {
-        //     cb.mod({ idx: i, value: arr[i] });
-        // }
     }
     clear() {
         this.queue.length = 0;
@@ -125,7 +114,6 @@ const delegate = {
                 } else if (prop in arrProps) {
                     if (arrProps[prop] === 1) {
                         return function(...argv) {
-                            // console.log(prop, argv);
                             d.add({ prop, argv });
                             return obj[prop].apply(obj, argv);
                         };
@@ -160,7 +148,6 @@ const delegate = {
                 return obj[key];
             },
             set: (obj, key, value) => {
-                console.log('set', key, value);
                 if (key in obj) {
                     d.add({ act: 'mod', k: key, v: value, old: obj[key] });
                 } else {
@@ -172,7 +159,6 @@ const delegate = {
             },
             deleteProperty: (obj, key) => {
                 if (key in obj) {
-                    console.log('delete', key);
                     const { keys } = d;
                     const idx = keys.indexOf(key);
                     d.add({ act: 'del', k: key, idx, old: obj[key] });
