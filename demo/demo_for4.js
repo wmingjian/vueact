@@ -1,6 +1,8 @@
 (function() {
 
 // 测试复杂数组更新
+// 测试数组多个引用，diff更新问题
+// 测试循环有无i参数
 
 const str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let uid = 3;
@@ -18,7 +20,9 @@ class Demo extends vueact.Component {
     }
     handleUnshift() {
         const { arr } = this.state;
-        const n = uid++;
+        let n = uid++;
+        arr.unshift({ id: n, name: str.charAt(n) });
+        n = uid++;
         arr.unshift({ id: n, name: str.charAt(n) });
         this.setState({ arr });
     }
@@ -40,7 +44,7 @@ class Demo extends vueact.Component {
     }
     handleSet() {
         const { arr } = this.state;
-        // arr[0].name = 'abc';
+        // arr[0].name = 'abc'; // TODO 更新属性尚未监听
         arr[0] = { id: arr[0].id, name: 'abc' };
         this.setState({ arr });
     }
@@ -56,12 +60,19 @@ class Demo extends vueact.Component {
                     <input type="button" value="pop" _action="pop" disabled="{arr.length === 0}" />
                     <input type="button" value="set" _action="set" disabled="{arr.length === 0}" />
                 </div>
-                <ol class="x-list">
-                    <for list="$arr,v,i">
-                        <li>[{i}]id={v.id},name={v.name}-a</li>
-                        <!--<li>[{i}]id={v.id},name={v.name}-b</li>-->
-                    </for>
-                </ol>
+                <div style="overflow:hidden;">
+                    <ol class="x-list" style="float:left;width:49%;box-sizing:border-box;">
+                        <for list="$arr,v,i">
+                            <li>[{i}]id={v.id},name={v.name}-a</li>
+                            <!--<li>[{i}]id={v.id},name={v.name}-b</li>-->
+                        </for>
+                    </ol>
+                    <ol class="x-list" style="float:left;width:49%;box-sizing:border-box;margin-left:2%;">
+                        <for list="$arr,v">
+                            <li>id={v.id},name={v.name}-a</li>
+                        </for>
+                    </ol>
+                </div>
             </div>
         `;
     }

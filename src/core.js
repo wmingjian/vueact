@@ -39,6 +39,7 @@ class Context {
             this.tasks.set(cp, task);
             nextTick(() => {
                 cp.render();
+                cp.resetState(); // 数组diff数据清理
                 this.tasks.delete(cp);
                 if (cb) cb();
             });

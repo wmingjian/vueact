@@ -234,7 +234,7 @@ class Renderer {
                 }
             }
             children.forEach(c => {
-                addChildren(vnode.children, c);
+                pushChildren(vnode.children, c);
             });
         }
         return vnode;

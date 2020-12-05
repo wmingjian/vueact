@@ -47,7 +47,19 @@ function formatName(name) {
     return name.replace(/(^|_)([a-z])/g, (_, a, b) => b.toUpperCase());
 }
 
-function addChildren(children, c) {
+function unshiftChildren(children, c) {
+    if (c) {
+        if (c instanceof Array) {
+            for (let i = c.length - 1; i > 0; i--) {
+                children.unshift(c[i]);
+            }
+        } else {
+            children.unshift(c);
+        }
+    }
+}
+
+function pushChildren(children, c) {
     if (c) {
         if (c instanceof Array) {
             c.forEach(v => children.push(v));
@@ -57,7 +69,26 @@ function addChildren(children, c) {
     }
 }
 
-function addElements(parent, el) {
+function unshiftElements(parent, el) {
+    if (el) {
+        const ref = parent.firstChild;
+        if (el instanceof Array) {
+            if (ref) {
+                el.forEach(v => parent.insertBefore(v, ref));
+            } else {
+                el.forEach(v => parent.appendChild(v));
+            }
+        } else {
+            if (ref) {
+                parent.insertBefore(el, ref);
+            } else {
+                parent.appendChild(el);
+            }
+        }
+    }
+}
+
+function pushElements(parent, el) {
     if (el) {
         if (el instanceof Array) {
             el.forEach(v => parent.appendChild(v));

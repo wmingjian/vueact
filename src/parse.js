@@ -107,7 +107,7 @@ function ast2fun(ast, options) {
         const { id, type, tag, props, children } = node;
         const sb = [`h(${id},${f(type)}${ft(tag)}${formatProps(props)}`];
         const { list, v, i } = node;
-        sb.push(`,${list},(${v},${i})=>${formatNodes(children, level)}`);
+        sb.push(`,${list},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)}`);
         sb.push(')');
         return sb.join('');
     }
@@ -130,7 +130,7 @@ function ast2fun(ast, options) {
         } else if (type === _t('for')) {
             const { id, tag, props, children, list, v, i } = node;
             if (tag === 'for') {
-                return `h(${id},${f(type)}${ft(tag)}{},${list},(${v},${i})=>${formatNodes(children, level)})`;
+                return `h(${id},${f(type)}${ft(tag)}{},${list},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)})`;
             } else {
                 return formatForNode(node, level);
             }
@@ -257,7 +257,7 @@ const parse = xml => {
                     for (let i = 0, len = childNodes.length; i < len; i++) {
                         const n = childNodes[i];
                         const x = parseVNode(parent, n);
-                        addChildren(children, x);
+                        pushChildren(children, x);
                     }
                 }
                 if (ifNode) {
@@ -273,7 +273,7 @@ const parse = xml => {
                     const a = list.substr(1).split(',');
                     vn.list = a[0];
                     vn.v = a[1];
-                    vn.i = a[2];
+                    vn.i = a.length === 3 ? a[2] : '';
                 } else if ('v-for' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
                     vn.type = _t('for');
                     const { 'v-for': list } = props;
@@ -281,7 +281,7 @@ const parse = xml => {
                     const a = list.substr(1).split(',');
                     vn.list = a[0];
                     vn.v = a[1];
-                    vn.i = a[2];
+                    vn.i = a.length === 3 ? a[2] : '';
                 } else {
                     vn.type = getType(tag);
                 }

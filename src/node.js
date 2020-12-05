@@ -156,7 +156,7 @@ class IfNode extends VNode {
                 for (let i = 0, len = children.length; i < len; i++) {
                     const child = children[i];
                     if (child) {
-                        addChildren(elements, child.renderNode());
+                        pushChildren(elements, child.renderNode());
                     }
                 }
             }
@@ -200,7 +200,7 @@ class IfNode extends VNode {
     }
     create(renderer, props, func) {
         const c = this.renderCond(renderer, props, func);
-        addChildren(this.children, c);
+        pushChildren(this.children, c);
     }
     update(renderer, props, func) {
         const c = this.renderCond(renderer, props, func);
@@ -216,7 +216,7 @@ class IfNode extends VNode {
                     for (let i = 0, len = children.length; i < len; i++) {
                         const child = children[i];
                         if (child) {
-                            addChildren(elements, child.renderNode());
+                            pushChildren(elements, child.renderNode());
                         }
                     }
                 }
@@ -292,7 +292,7 @@ class DomNode extends VNode {
             for (let i = 0, len = children.length; i < len; i++) {
                 let child = children[i];
                 if (child) {
-                    addElements(el, child.renderNode());
+                    pushElements(el, child.renderNode());
                 }
             }
         }
@@ -313,15 +313,20 @@ class ForNode extends BlockNode {
         this.props = { ...attrs };
         this.children = [];
         this.blocks = []; // [{Block}]
-        this.dataList = data.list.slice(0) || [];
         this.nodeList = [];
         this.holder = null; // 占位符
+    }
+    createBlock(renderer, func, value, idx) {
+        const block = renderer.openBlock();
+        const c = (this.fullFunc || func)(value, idx);
+        renderer.closeBlock();
+        return { block, c };
     }
     render() {
         const fragment = this.el || this.doc.createDocumentFragment();
         this.children.forEach(c => {
             const el = c.renderNode();
-            addElements(fragment, el);
+            pushElements(fragment, el);
         });
         return fragment;
     }
@@ -330,37 +335,31 @@ class ForNode extends BlockNode {
             this.fullFunc = func;
         }
         list.forEach((v, i) => {
-            renderer.openBlock();
-            this.blocks.push(renderer.block);
-            const c = func(v, i);
-            renderer.closeBlock();
+            const { block, c } = this.createBlock(renderer, func, v, i);
+            this.blocks.push(block);
             this.nodeList.push(c);
-            addChildren(this.children, c);
+            pushChildren(this.children, c);
         });
     }
-    compare(a, b, cb) {
-        const al = a.length;
-        const bl = b.length;
-        const queue = [];
-        for (let i = 0, len = Math.max(al, bl); i < len; i++) {
-            if (i < al) {
-                if (i < bl) {
-                    if (typeof a[i] === typeof b[i] && a[i] === b[i]) {
-                        queue.push({ act: 'mod', idx: i, old: a[i], value: b[i] }); // TODO 应该可以省略
-                    } else {
-                        queue.push({ act: 'mod', idx: i, old: a[i], value: b[i] });
-                    }
-                } else {
-                    queue.push({ act: 'del', idx: i, old: a[i]});
-                }
-            } else {
-                queue.push({ act: 'add', idx: i, value: b[i] });
-            }
+    compare(arr, cb) {
+        // 使用proxy观察数组变化，省掉数组diff逻辑
+        arr.$diff.exec(cb, this.model.__node.i !== ''); // 数组变更的diff数据
+    }
+    removeNode(c) {
+        const { blocks, holder } = this;
+        if (blocks.length === 1) {
+            const ph = holder || (this.holder = this.doc.createComment('for ' + this.id));
+            const ref = c instanceof Array ? c[0].el : c.el;
+            ref.parentNode.insertBefore(ph, ref);
         }
-        queue.forEach(v => cb[v.act](v));
+        if (c instanceof Array) {
+            c.forEach(v => v.remove());
+        } else {
+            c.remove();
+        }
     }
     renderDiff(renderer, list, func) {
-        const { children, nodeList, dataList, blocks, holder } = this;
+        const { children, nodeList, blocks, holder } = this;
         let n0;
         const { parentNode } = nodeList.length === 0 // 如果删空了，会找不到parentNode
             ? holder
@@ -368,49 +367,61 @@ class ForNode extends BlockNode {
                 n0 = nodeList[0],
                 n0 instanceof Array ? n0[0].el : n0.el
             );
-        this.compare(dataList, list, {
-            add: ({ idx, value }) => { // v, i, act
-                renderer.openBlock();
-                blocks.push(renderer.block); // TODO
-                const c = (this.fullFunc || func)(value, idx);
-                renderer.closeBlock();
-                nodeList.push(c);
-                const len = dataList.length;
+        this.compare(list, {
+            unshift: (value) => {
+                const { block, c } = this.createBlock(renderer, func, value, 0);
+                const len = nodeList.length;
+                blocks.unshift(block);
+                nodeList.unshift(c);
                 if (len === 0) {
                     parentNode.removeChild(holder);
                 }
-                if (idx === 0) {
-                    dataList.unshift(value);
-                } else if (idx === len) {
-                    dataList.push(value);
-                } else {
-                    dataList.splice(idx, 0, value);
+                unshiftChildren(children, c);
+                unshiftElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+            },
+            push: (value) => {
+                const { block, c } = this.createBlock(renderer, func, value, nodeList.length);
+                const len = nodeList.length;
+                blocks.push(block);
+                nodeList.push(c);
+                if (len === 0) {
+                    parentNode.removeChild(holder);
                 }
-                addChildren(children, c);
-                addElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+                pushChildren(children, c);
+                pushElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+            },
+            add: ({ idx, value }) => { // v, i, act
+                const { block, c } = this.createBlock(renderer, func, value, idx);
+                const len = nodeList.length;
+                blocks.push(block); // TODO
+                nodeList.push(c);
+                if (len === 0) {
+                    parentNode.removeChild(holder);
+                }
+                pushChildren(children, c);
+                pushElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
             },
             mod: ({ idx, value }) => { // TODO
                 renderer.openBlock(blocks[idx]);
                 func(value, idx);
                 renderer.closeBlock();
-                dataList[idx] = value;
             },
+            shift: () => {
+                const c = nodeList.shift();
+                this.removeNode(c);
+                blocks.shift();
+                // TODO 更新children
+            },
+            pop: () => {
+                const c = nodeList.pop();
+                this.removeNode(c);
+                blocks.pop();
+                // TODO 更新children
+            },
+            // splice
             del: ({ idx }) => { // TODO
-                const c = nodeList[idx];
-                if (dataList.length === 1) {
-                    const ph = holder || (this.holder = this.doc.createComment('for ' + this.id));
-                    const ref = c instanceof Array ? c[0].el : c.el;
-                    ref.parentNode.insertBefore(ph, ref);
-                }
-                if (c instanceof Array) {
-                    c.forEach(v => {
-                        v.remove();
-                    });
-                } else {
-                    c.remove();
-                }
-                nodeList.splice(idx, 1);
-                dataList.splice(idx, 1);
+                const c = nodeList.splice(idx, 1)[0];
+                this.removeNode(c);
                 blocks.splice(idx, 1);
                 // TODO 更新children
             }
@@ -429,7 +440,7 @@ class ListNode extends ForNode {
     render() {
         const el = this.el || this.doc.createElement(this.tag);
         this.children.forEach(c => {
-            addElements(el, c.renderNode());
+            pushElements(el, c.renderNode());
         });
         return el;
     }

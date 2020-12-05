@@ -102,8 +102,9 @@ class ComponentProto {
         }
     }
     update(props) {
+        const hash = this.c.props;
         for (const k in props) {
-            this.c.props[k] = props[k];
+            hash[k] = props[k]; // TODO 数组或对象考虑使用proxy监听变化
         }
         this.render();
     }
@@ -115,5 +116,13 @@ class ComponentProto {
             state: newState,
             cb
         });
+    }
+    resetState() {
+        const { state } = this.c;
+        for (const k in state) {
+            if (state[k] instanceof Array) {
+                state[k].$diff.clear();
+            }
+        }
     }
 }
