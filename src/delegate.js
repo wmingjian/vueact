@@ -16,8 +16,10 @@ class ArrayDelegate {
         this.list = new Array(len); // emulate arr
         this.len = len; // 数组更新前的长度
         this.queue = []; // diff数据
+        this._cleared = false;
     }
     add(v) {
+        this._cleared = false;
         this.queue.push(v);
     }
     exec(cb, hasIdx) {
@@ -29,11 +31,11 @@ class ArrayDelegate {
         }
         let updateIdx = '';
         this.queue.forEach(v => {
-            const { prop } = v;
-            if (typeof prop === 'number') {
-                cb.mod({ idx: prop, old: v.old, value: v.value });
+            const { key } = v;
+            if (typeof key === 'number') {
+                cb.mod({ idx: key, old: v.old, value: v.value });
             } else {
-                switch (prop) {
+                switch (key) {
                     case 'unshift':
                         cb.unshift(v.argv[0]);
                         n++;
@@ -68,8 +70,11 @@ class ArrayDelegate {
         }
     }
     clear() {
-        this.len = this.arr.length;
-        this.queue.length = 0;
+        if (!this._cleared) {
+            this._cleared = true;
+            this.len = this.arr.length;
+            this.queue.length = 0;
+        }
     }
 }
 
@@ -78,8 +83,10 @@ class ObjectDelegate {
         this.obj = obj;
         this.keys = Object.keys(obj);
         this.queue = []; // diff数据
+        this._cleared = false;
     }
     add(v) {
+        this._cleared = false;
         this.queue.push(v);
     }
     exec(cb) {
@@ -99,38 +106,42 @@ class ObjectDelegate {
         });
     }
     clear() {
-        this.queue.length = 0;
+        if (!this._cleared) {
+            this._cleared = true;
+            this.queue.length = 0;
+        }
     }
 }
 
+const delegate_map = new WeakMap();
 const delegate = {
     createArray(arr) {
         const d = new ArrayDelegate(arr);
         return new Proxy(arr, {
-            get: (obj, prop) => {
-                if (prop === '$delegate') {
+            get: (obj, key) => {
+                if (key === '$delegate') {
                     return d;
-                } else if (/^\d+$/.test(prop)) {
-                } else if (prop in arrProps) {
-                    if (arrProps[prop] === 1) {
+                } else if (/^\d+$/.test(key)) {
+                } else if (key in arrProps) {
+                    if (arrProps[key] === 1) {
                         return function(...argv) {
-                            d.add({ prop, argv });
-                            return obj[prop].apply(obj, argv);
+                            d.add({ key, argv });
+                            return obj[key].apply(obj, argv);
                         };
                     }
                 } else {
-                    console.log('get', prop);
+                    console.log('get', key);
                 }
-                return obj[prop];
+                return obj[key];
             },
-            set: (obj, prop, value) => {
-                if (/^\d+$/.test(prop)) {
-                    d.add({ prop: parseInt(prop, 10), old: obj[prop], value });
-                } else if (prop === 'length') {
+            set: (obj, key, value) => {
+                if (/^\d+$/.test(key)) {
+                    d.add({ key: parseInt(key, 10), old: obj[key], value });
+                } else if (key === 'length') {
                 } else {
-                    console.log('set', prop, value);
+                    console.log('set', key, value);
                 }
-                obj[prop] = value;
+                obj[key] = value;
                 return true;
             }
         });
@@ -172,5 +183,16 @@ const delegate = {
                 return true;
             }
         });
+    },
+    create(v) {
+        if (v.$delegate) {
+            return v;
+        } else if (delegate_map.has(v)) {
+            return delegate_map.get(v);
+        } else {
+            let d = v instanceof Array ? this.createArray(v) : this.createObject(v);
+            delegate_map.set(v, d);
+            return d;
+        }
     }
 };

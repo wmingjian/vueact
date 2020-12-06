@@ -7,7 +7,7 @@ class VNode {
         this.model = model; // {Model}
         this.data = data;
         this.type = type;
-        this._el = null; // {Element}
+        this.el = null; // {Element}
         if (!(type === _t('if') && tag !== 'if')) {
             for (const k in model.deps) { // 根据model的deps添加
                 this.proto.addRef(k, this);
@@ -15,18 +15,9 @@ class VNode {
         }
     }
     dispose() {
-        this._el = null;
+        this.el = null;
         this.model = null;
         this.proto = null;
-    }
-    get el() {
-        return this._el;
-    }
-    set el(v) {
-        if (v instanceof Array) {
-            debugger;
-        }
-        this._el = v;
     }
     get doc() {
         return this.model.proto.ctx.document;
@@ -576,7 +567,11 @@ class ComponentNode extends DomNode {
         return this.el || this.cp.render();
     }
     update(props/* , children */) {
-        this.c.onPropsChange(props);
+        if (this.c.props !== props) {
+            this.c.onPropsChange(props);
+        } else {
+            console.log('ComponentNode::update', props);
+        }
     }
 }
 

@@ -4,6 +4,7 @@ class Context {
         this.components = components;
         this.instances = []; // 所有组件proto实例
         this.tasks = new Map();
+        this.rendering = false;
     }
     createComponentProto(C, props = {}) {
         const create = (C, props) => {
@@ -11,10 +12,8 @@ class Context {
             const { state } = c;
             for (const k in state) {
                 const v = state[k];
-                if (v instanceof Array) {
-                    state[k] = delegate.createArray(v);
-                } else if (v instanceof Object && v !== null) {
-                    state[k] = delegate.createObject(v);
+                if (v instanceof Array || v instanceof Object && v !== null) {
+                    state[k] = delegate.create(v);
                 }
             }
             c.setState = (state, cb) => {
@@ -39,14 +38,22 @@ class Context {
     addTask(task) {
         const { tasks } = this;
         const { cp, cb } = task;
-        if (!tasks.has(cp)) {
-            tasks.set(cp, task);
-            nextTick(() => {
-                cp.render();
-                cp.resetState(); // 数组diff数据清理
-                tasks.delete(cp);
-                if (cb) cb();
-            });
+        if (this.rendering) {
+            cp.render();
+            cp.resetState(); // 数组diff数据清理
+            if (cb) cb();
+        } else {
+            if (!tasks.has(cp)) {
+                tasks.set(cp, task);
+                nextTick(() => {
+                    this.rendering = true;
+                    cp.render();
+                    this.rendering = false;
+                    cp.resetState(); // 数组diff数据清理
+                    tasks.delete(cp);
+                    if (cb) cb();
+                });
+            }
         }
     }
 }

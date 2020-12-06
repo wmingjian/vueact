@@ -16,7 +16,7 @@ class List extends vueact.Component {
     onPropsChange(nextProps) {
         console.log('onPropsChange', nextProps);
         // const { list } = this.state;
-        this.setState({ list: nextProps.list });
+        this.setState({ list: nextProps.list }); // TODO
     }
     render() {
         // console.log('List::render');
@@ -75,6 +75,13 @@ class Demo extends vueact.Component {
     render() {
         return `
             <div id="demo_full" _action="$act">
+                <div>
+                    <input type="button" value="add_num{a}" _action="add" />
+                    <input type="button" value="dec_num{a}" _action="dec" />
+                    <input type="button" value="test" _action="test" />
+                    <input type="button" value="arr_push" _action="push_item" />
+                    <input type="button" value="arr_pop" _action="pop_item" disabled="{arr.length === 0}" />
+                </div>
                 {a}+{b}={a+b};
                 <i class="$a">####</i>
                 {a}/{b}={a/b};
@@ -87,13 +94,10 @@ class Demo extends vueact.Component {
                     {a}
                     <div>xyz</div>
                 </if>
+                list=
                 <List list="$list" />
+                arr=
                 <List v-if="{a}" list="$arr" />
-                <input type="button" value="add_num{a}" _action="add" />
-                <input type="button" value="dec_num{a}" _action="dec" />
-                <input type="button" value="test" _action="test" />
-                <input type="button" value="arr_push" _action="push_item" />
-                <input type="button" value="arr_pop" _action="pop_item" disabled="{arr.length === 0}" />
             </div>
         `;
     }
