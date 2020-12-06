@@ -314,12 +314,16 @@ class ForNode extends BlockNode {
         return { block, c };
     }
     render() {
-        const fragment = this.el || this.doc.createDocumentFragment();
-        this.children.forEach(c => {
-            const el = c.renderNode();
-            pushElements(fragment, el);
-        });
-        return fragment;
+        if (this.children.length !== 0) {
+            const fragment = this.el || this.doc.createDocumentFragment();
+            this.children.forEach(c => {
+                const el = c.renderNode();
+                pushElements(fragment, el);
+            });
+            return fragment;
+        } else {
+            return this.holder || (this.holder = this.doc.createComment('for ' + this.id));
+        }
     }
     renderAll(renderer, list, func) {
         if (!this.fullFunc) {
@@ -430,9 +434,14 @@ class ListNode extends ForNode {
     }
     render() {
         const el = this.el || this.doc.createElement(this.tag);
-        this.children.forEach(c => {
-            pushElements(el, c.renderNode());
-        });
+        if (this.children.length !== 0) {
+            this.children.forEach(c => {
+                pushElements(el, c.renderNode());
+            });
+        } else if (!this.holder) {
+            this.holder = this.doc.createComment('for ' + this.id);
+            pushElements(el, this.holder);
+        }
         return el;
     }
 }
@@ -455,13 +464,17 @@ class ForEachNode extends BlockNode {
         return { block, c };
     }
     render() {
-        const fragment = this.el || this.doc.createDocumentFragment();
-        this.children.forEach((c, i) => {
-            const el = c.renderNode();
-            el.setAttribute('__id', i);
-            pushElements(fragment, el);
-        });
-        return fragment;
+        if (this.children.length !== 0) {
+            const fragment = this.el || this.doc.createDocumentFragment();
+            this.children.forEach((c, i) => {
+                const el = c.renderNode();
+                el.setAttribute('__id', i);
+                pushElements(fragment, el);
+            });
+            return fragment;
+        } else {
+            return this.holder || (this.holder = this.doc.createComment('for ' + this.id));
+        }
     }
     renderAll(renderer, map, func) {
         if (!this.fullFunc) {
@@ -544,9 +557,14 @@ class MapNode extends ForEachNode {
     }
     render() {
         const el = this.el || this.doc.createElement(this.tag);
-        this.children.forEach(c => {
-            pushElements(el, c.renderNode());
-        });
+        if (this.children.length !== 0) {
+            this.children.forEach(c => {
+                pushElements(el, c.renderNode());
+            });
+        } else if (!this.holder) {
+            this.holder = this.doc.createComment('for ' + this.id);
+            pushElements(el, this.holder);
+        }
         return el;
     }
 }
