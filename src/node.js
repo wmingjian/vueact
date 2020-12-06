@@ -110,13 +110,17 @@ class ExpNode extends VNode {
 class BlockNode extends VNode {
     constructor(model, data) {
         super(model, data);
+        this.holder = null; // 占位符
     }
     render() {
         return null;
     }
+    getHolder() {
+        return this.holder || (this.holder = this.doc.createComment(this.tag + ' ' + this.id));
+    }
 }
 
-class IfNode extends VNode {
+class IfNode extends BlockNode {
     constructor(model, data) {
         super(model, data);
         this.children = [];
@@ -129,7 +133,6 @@ class IfNode extends VNode {
         }
         this.elements = [];
         this.container = null;
-        this.holder = null; // 占位符
         this.fullFunc = null;
         this.block_t = null; // {Block}
         this.block_f = null; // {Block}
@@ -141,7 +144,7 @@ class IfNode extends VNode {
         this.ret = !!exp;
         let container = this.ret
             ? this.container || (this.container = doc.createDocumentFragment())
-            : this.holder || (this.holder = doc.createComment('if ' + this.id));
+            : this.getHolder();
         if (exp) {
             if (elements.length === 0) {
                 for (let i = 0, len = children.length; i < len; i++) {
@@ -167,8 +170,9 @@ class IfNode extends VNode {
             return container; // elements;
         } else {
             if (this.ret !== this.oldRet) {
-                const p = elements[0].parentNode;
-                p.replaceChild(container, elements[0]);
+                const ref = elements[0];
+                const p = ref.parentNode;
+                p.replaceChild(container, ref);
                 elements.forEach((el, i) => {
                     if (i !== 0) {
                         p.removeChild(el);
@@ -221,9 +225,9 @@ class IfNode extends VNode {
                     p.removeChild(ref);
                 }
             } else {
-                const p = elements[0].parentNode;
-                const ph = this.holder || (this.holder = this.doc.createComment('if ' + this.id));
-                p.replaceChild(ph, elements[0]);
+                const ref = elements[0];
+                const p = ref.parentNode;
+                p.replaceChild(this.getHolder(), ref);
                 elements.forEach((el, i) => {
                     if (i !== 0) {
                         p.removeChild(el);
@@ -305,7 +309,6 @@ class ForNode extends BlockNode {
         this.children = [];
         this.blocks = []; // [{Block}]
         this.nodeList = [];
-        this.holder = null; // 占位符
     }
     createBlock(renderer, func, value, idx) {
         const block = renderer.openBlock();
@@ -322,7 +325,7 @@ class ForNode extends BlockNode {
             });
             return fragment;
         } else {
-            return this.holder || (this.holder = this.doc.createComment('for ' + this.id));
+            return this.getHolder();
         }
     }
     renderAll(renderer, list, func) {
@@ -341,11 +344,10 @@ class ForNode extends BlockNode {
         arr.$delegate.exec(cb, this.model.__node.i !== ''); // 数组变更的diff数据
     }
     removeNode(c) {
-        const { blocks, holder } = this;
+        const { blocks } = this;
         if (blocks.length === 1) {
-            const ph = holder || (this.holder = this.doc.createComment('for ' + this.id));
             const ref = c instanceof Array ? c[0].el : c.el;
-            ref.parentNode.insertBefore(ph, ref);
+            ref.parentNode.insertBefore(this.getHolder(), ref);
         }
         if (c instanceof Array) {
             c.forEach(v => v.remove());
@@ -438,9 +440,8 @@ class ListNode extends ForNode {
             this.children.forEach(c => {
                 pushElements(el, c.renderNode());
             });
-        } else if (!this.holder) {
-            this.holder = this.doc.createComment('for ' + this.id);
-            pushElements(el, this.holder);
+        } else {
+            pushElements(el, this.getHolder());
         }
         return el;
     }
@@ -455,7 +456,6 @@ class ForEachNode extends BlockNode {
         this.children = [];
         this.blocks = {}; // [{Block}]
         this.nodeList = [];
-        this.holder = null; // 占位符
     }
     createBlock(renderer, func, value, key) {
         const block = renderer.openBlock();
@@ -473,7 +473,7 @@ class ForEachNode extends BlockNode {
             });
             return fragment;
         } else {
-            return this.holder || (this.holder = this.doc.createComment('for ' + this.id));
+            return this.getHolder();
         }
     }
     renderAll(renderer, map, func) {
@@ -492,11 +492,10 @@ class ForEachNode extends BlockNode {
         obj.$delegate.exec(cb, this.model.__node.i !== ''); // 对象变更的diff数据
     }
     removeNode(c) {
-        const { blocks, holder } = this;
+        const { blocks } = this;
         if (blocks.length === 1) {
-            const ph = holder || (this.holder = this.doc.createComment('foreach ' + this.id));
             const ref = c instanceof Array ? c[0].el : c.el;
-            ref.parentNode.insertBefore(ph, ref);
+            ref.parentNode.insertBefore(this.getHolder(), ref);
         }
         if (c instanceof Array) {
             c.forEach(v => v.remove());
@@ -561,9 +560,8 @@ class MapNode extends ForEachNode {
             this.children.forEach(c => {
                 pushElements(el, c.renderNode());
             });
-        } else if (!this.holder) {
-            this.holder = this.doc.createComment('for ' + this.id);
-            pushElements(el, this.holder);
+        } else {
+            pushElements(el, this.getHolder());
         }
         return el;
     }

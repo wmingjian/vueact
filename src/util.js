@@ -8,14 +8,14 @@ function loadXMLString(xmlString) {
                 xmlDoc.async = false;
                 xmlDoc.loadXML(xmlString); // loadXML方法载入xml字符串
                 break;
-            } catch (e) {
+            } catch (ex) {
             }
         }
     } else if (window.DOMParser && document.implementation && document.implementation.createDocument) { // 支持Mozilla浏览器
         try {
             domParser = new DOMParser();
             xmlDoc = domParser.parseFromString(xmlString, 'text/xml');
-        } catch (e) {
+        } catch (ex) {
         }
     } else {
         return null;
