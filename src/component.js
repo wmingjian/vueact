@@ -113,10 +113,14 @@ class ComponentProto {
         this.render();
     }
     updateDom(newState, oldState, state, cb) {
-        this.c.state = newState;
+        const { c } = this;
+        const s = c.state;
+        for (const k in newState) {
+            s[k] = newState[k];
+        }
         this.ctx.addTask({
             cp: this,
-            c: this.c,
+            c,
             state: newState,
             cb
         });

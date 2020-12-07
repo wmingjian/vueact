@@ -168,7 +168,6 @@ class ListModel extends ForModel {
     }
 }
 
-
 class MapModel extends ForEachModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
