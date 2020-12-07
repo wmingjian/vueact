@@ -40,6 +40,11 @@ class Model {
             return { type: 'unknown', value: undefined };
         }
     }
+    _addDep(name) {
+        const v = this.getVarObj(name);
+        this.addDep(v.type, name);
+        return name;
+    }
     createVNode(data) {
         const C = vueact.nodeMap[this.type];
         const vnode = new C(this, data);
@@ -74,8 +79,7 @@ class ExprModel extends Model {
         this.type = 'expr';
         this.expr = expr.parse(this, node.text); // {Expr}
         for (const k in this.expr.deps) {
-            const v = this.getVarObj(k);
-            this.addDep(v.type, k);
+            this._addDep(k);
         }
     }
 }
@@ -84,10 +88,7 @@ class VarModel extends Model {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'var';
-        const { name } = node;
-        this.name = name;
-        const v = this.getVarObj(name);
-        this.addDep(v.type, name);
+        this.name = this._addDep(node.name);
     }
 }
 
@@ -99,37 +100,39 @@ class ExpModel extends Model {
     }
 }
 
-class BlockModel extends Model {
+class ElementModel extends Model {
+    constructor(proto, parent, node) {
+        super(proto, parent, node);
+        this.tag = node.tag; // TODO 检查tag合法性
+        this.attrs = { ...node.props };
+        this.nodes = [];
+    }
+}
+
+class DomModel extends ElementModel {
+    constructor(proto, parent, node) {
+        super(proto, parent, node);
+        this.type = 'dom';
+        this.attrs = this.proto.parseAttrs(this, node.props);
+        this.nodes = this.buildChildren(this, node);
+    }
+}
+class BlockModel extends ElementModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         // TODO
     }
 }
 
-class IfModel extends Model {
+class IfModel extends BlockModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'if';
-        const { type, tag, props, exp } = node;
-        this.tag = tag;
-        this.expr = expr.parse(this, exp.text); // {Expr}
+        this.expr = expr.parse(this, node.exp.text); // {Expr}
         for (const k in this.expr.deps) {
-            const v = this.getVarObj(k);
-            this.addDep(v.type, k);
+            this._addDep(k);
         }
-        this.attrs = this.proto.parseAttrs(this, props);
-        this.nodes = this.buildChildren(this, node);
-    }
-}
-
-class DomModel extends Model {
-    constructor(proto, parent, node) {
-        super(proto, parent, node);
-        this.type = 'dom';
-        this.__node = node;
-        const { tag, props } = node;
-        this.tag = tag; // TODO 检查tag合法性
-        this.attrs = this.proto.parseAttrs(this, props);
+        this.attrs = this.proto.parseAttrs(this, node.props);
         this.nodes = this.buildChildren(this, node);
     }
 }
@@ -138,11 +141,7 @@ class ForModel extends BlockModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'for';
-        const name = this.name = node.list;
-        const v = this.getVarObj(name);
-        this.addDep(v.type, name);
-        const props = { ...node.props };
-        this.attrs = props;
+        this.name = this._addDep(node.name);
         this.nodes = this.buildChildren(this, node);
     }
 }
@@ -151,11 +150,7 @@ class ForEachModel extends BlockModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'foreach';
-        const name = this.name = node.map;
-        const v = this.getVarObj(name);
-        this.addDep(v.type, name);
-        const props = { ...node.props };
-        this.attrs = props;
+        this.name = this._addDep(node.name);
         this.nodes = this.buildChildren(this, node);
     }
 }
@@ -164,7 +159,6 @@ class ListModel extends ForModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'list';
-        this.tag = node.tag;
     }
 }
 
@@ -172,7 +166,6 @@ class MapModel extends ForEachModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'map';
-        this.tag = node.tag;
     }
 }
 
@@ -183,7 +176,7 @@ class ComponentModel extends DomModel {
     }
 }
 
-class FragmentModel extends Model {
+class FragmentModel extends ElementModel {
     constructor(proto, parent, node) {
         super(proto, parent, node);
         this.type = 'fragment';

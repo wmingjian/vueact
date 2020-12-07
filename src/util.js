@@ -99,6 +99,9 @@ function pushElements(parent, el) {
 }
 
 function setAttr(el, k, v) {
+    if (k === '$class') {
+        k = 'class';
+    }
     if (k === 'style') {
         el.style.cssText = v;
     } else if (k === 'disabled' || k === 'readonly' || k === 'checked' || k === 'selected') {

@@ -6,6 +6,13 @@ class Component {
     setState(state, cb) {
         // empty
     }
+    shouldComponentUpdate() {}
+    componentWillReceiveProps() {}
+    componentDidUpdate() {}
+    componentWillMount() {}
+    componentDidMount() {}
+    componentWillUnmount() {}
+    componentDidUnmount() {}
     render() {
         return '';
     }
@@ -97,11 +104,12 @@ class ComponentProto {
     }
     render() {
         const { props, state } = this.c;
+        const data = { proto: this, component: this.c, props, state };
         if (!this.vnode) {
-            this.vnode = this.renderer.run_render(this.func, { props, state });
+            this.vnode = this.renderer.run_render(this.func, data);
             return this.vnode.renderNode();
         } else {
-            this.renderer.run_update(this.ast.renderDiff, { props, state });
+            this.renderer.run_update(this.ast.renderDiff, data);
             return this.vnode.el;
         }
     }
@@ -130,7 +138,9 @@ class ComponentProto {
         for (const k in state) {
             const v = state[k];
             if (v instanceof Array || v instanceof Object && v !== null) {
-                v.$delegate.clear();
+                if (v.$delegate) {
+                    v.$delegate.clear();
+                }
             }
         }
     }

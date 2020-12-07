@@ -107,9 +107,94 @@ class ExpNode extends VNode {
     }
 }
 
-class BlockNode extends VNode {
+class ElementNode extends VNode {
     constructor(model, data) {
         super(model, data);
+        const { tag, attrs } = model;
+        this.tag = tag; // TODO 检查tag合法性
+        this.props = { ...attrs };
+        this.children = [];
+    }
+}
+
+function renderAttrs(node, el) {
+    const { proto, attrs } = node.model;
+    if (attrs) { // TODO
+        for (const k in attrs) {
+            const attr = attrs[k];
+            const t = typeof attr;
+            if (isAtom(t)) {
+                setAttr(el, k, attr);
+            } else if (attr instanceof AttrNode) {
+                let at = attr.attrType;
+                if (at === 'action') {
+                    proto.addAction(node.model, attr.action, el);
+                } else {
+                    setAttr(el, k, node.props[k]);
+                    const domAttr = el.attributes[k];
+                    attr.setAttr(domAttr);
+                    if (at !== 'string') {
+                        node.attributes[k] = domAttr;
+                    }
+                }
+            }
+        }
+    }
+}
+
+class DomNode extends ElementNode {
+    constructor(model, data) {
+        super(model, data);
+        const { attrs } = model;
+        const props = this.props;
+        for (const k in attrs) {
+            const attr = attrs[k];
+            if (typeof attr === 'string') {
+            } else if (attr instanceof AttrNode) {
+                attr.setNode(this);
+                attr.attrName = k;
+                props[k] = k in data.props ? data.props[k] : attr.getValue(this);
+            }
+        }
+        this.attributes = {}; // 可变 attributes
+    }
+    render() {
+        const { children } = this;
+        const el = this.el || this.doc.createElement(this.tag);
+        renderAttrs(this, el);
+        if (children) {
+            for (let i = 0, len = children.length; i < len; i++) {
+                let child = children[i];
+                if (child) {
+                    pushElements(el, child.renderNode());
+                    if (child instanceof Array) {
+                        child.forEach(v => {
+                            if (v.type === 'component') {
+                                v.c.componentDidMount();
+                            }
+                        });
+                    } else {
+                        if (child.type === 'component') {
+                            child.c.componentDidMount();
+                        }
+                    }
+                }
+            }
+        }
+        return el;
+    }
+    update(props/* , children */) {
+        for (const k in props) {
+            setAttr(this.el, k, props[k]);
+        }
+    }
+}
+
+class BlockNode extends ElementNode {
+    constructor(model, data) {
+        super(model, data);
+        this.name = model.__node.name;
+        this.blocks = []; // [{Block}]
         this.holder = null; // 占位符
     }
     render() {
@@ -123,7 +208,6 @@ class BlockNode extends VNode {
 class IfNode extends BlockNode {
     constructor(model, data) {
         super(model, data);
-        this.children = [];
         this.ret = false;
         this.oldRet = null;
         for (const k in model.expr.deps) {
@@ -134,8 +218,7 @@ class IfNode extends BlockNode {
         this.elements = [];
         this.container = null;
         this.fullFunc = null;
-        this.block_t = null; // {Block}
-        this.block_f = null; // {Block}
+        this.blocks.push(null, null); // t, f
     }
     render() {
         const { doc, elements, children } = this;
@@ -186,8 +269,8 @@ class IfNode extends BlockNode {
         const { exp } = props;
         let f = func;
         renderer.openBlock(!!exp
-            ? this.block_t || (f = this.fullFunc || (this.fullFunc = func), this.block_t = new Block())
-            : this.block_f || (f = this.fullFunc || (this.fullFunc = func), this.block_f = new Block())
+            ? this.blocks[0] || (f = this.fullFunc || (this.fullFunc = func), this.blocks[0] = new Block())
+            : this.blocks[1] || (f = this.fullFunc || (this.fullFunc = func), this.blocks[1] = new Block())
         );
         const vn = f(exp);
         renderer.closeBlock();
@@ -238,76 +321,9 @@ class IfNode extends BlockNode {
     }
 }
 
-class DomNode extends VNode {
-    constructor(model, data) {
-        super(model, data);
-        const { tag, attrs } = model;
-        this.tag = tag; // TODO 检查tag合法性
-        const props = {};
-        for (const k in attrs) {
-            const attr = attrs[k];
-            if (typeof attr === 'string') {
-                props[k] = attr;
-            } else if (attr instanceof AttrNode) {
-                attr.setNode(this);
-                attr.attrName = k;
-                props[k] = k in data.props ? data.props[k] : attr.getValue(this);
-            }
-        }
-        this.props = props;
-        this.children = [];
-        this.attributes = {}; // 可变 attributes
-    }
-    render() {
-        const { children } = this;
-        const { proto, attrs } = this.model;
-        const el = this.el || this.doc.createElement(this.tag);
-        if (attrs) { // TODO
-            for (const k in attrs) {
-                const attr = attrs[k];
-                const t = typeof attr;
-                if (isAtom(t)) {
-                    setAttr(el, k, attr);
-                } else if (attr instanceof AttrNode) {
-                    let at = attr.attrType;
-                    if (at === 'action') {
-                        proto.addAction(this.model, attr.action, el);
-                    } else {
-                        setAttr(el, k, this.props[k]);
-                        const domAttr = el.attributes[k];
-                        attr.setAttr(domAttr);
-                        if (at !== 'string') {
-                            this.attributes[k] = domAttr;
-                        }
-                    }
-                }
-            }
-        }
-        if (children) {
-            for (let i = 0, len = children.length; i < len; i++) {
-                let child = children[i];
-                if (child) {
-                    pushElements(el, child.renderNode());
-                }
-            }
-        }
-        return el;
-    }
-    update(props/* , children */) {
-        for (const k in props) {
-            setAttr(this.el, k, props[k]);
-        }
-    }
-}
-
 class ForNode extends BlockNode {
     constructor(model, data) {
         super(model, data);
-        const { __node, attrs } = model;
-        this.name = __node.list;
-        this.props = { ...attrs };
-        this.children = [];
-        this.blocks = []; // [{Block}]
         this.nodeList = [];
     }
     createBlock(renderer, func, value, idx) {
@@ -317,9 +333,10 @@ class ForNode extends BlockNode {
         return { block, c };
     }
     render() {
-        if (this.children.length !== 0) {
+        const { children } = this;
+        if (children.length !== 0) {
             const fragment = this.el || this.doc.createDocumentFragment();
-            this.children.forEach(c => {
+            children.forEach(c => {
                 const el = c.renderNode();
                 pushElements(fragment, el);
             });
@@ -332,11 +349,12 @@ class ForNode extends BlockNode {
         if (!this.fullFunc) {
             this.fullFunc = func;
         }
+        const { blocks, nodeList, children } = this;
         list.forEach((v, i) => {
             const { block, c } = this.createBlock(renderer, func, v, i);
-            this.blocks.push(block);
-            this.nodeList.push(c);
-            pushChildren(this.children, c);
+            blocks.push(block);
+            nodeList.push(c);
+            pushChildren(children, c);
         });
     }
     compare0(a, b, cb) {
@@ -460,32 +478,11 @@ class ForNode extends BlockNode {
     }
 }
 
-class ListNode extends ForNode {
-    constructor(model, data) {
-        super(model, data);
-        this.tag = model.tag;
-    }
-    render() {
-        const el = this.el || this.doc.createElement(this.tag);
-        if (this.children.length !== 0) {
-            this.children.forEach(c => {
-                pushElements(el, c.renderNode());
-            });
-        } else {
-            pushElements(el, this.getHolder());
-        }
-        return el;
-    }
-}
-
 class ForEachNode extends BlockNode {
     constructor(model, data) {
         super(model, data);
-        const { __node, attrs } = model;
-        this.name = __node.list;
-        this.props = { ...attrs };
-        this.children = [];
-        this.blocks = {}; // [{Block}]
+        // override
+        this.blocks = {}; // { k: {Block} }
         this.nodeList = [];
     }
     createBlock(renderer, func, value, key) {
@@ -495,9 +492,10 @@ class ForEachNode extends BlockNode {
         return { block, c };
     }
     render() {
-        if (this.children.length !== 0) {
+        const { children } = this;
+        if (children.length !== 0) {
             const fragment = this.el || this.doc.createDocumentFragment();
-            this.children.forEach((c, i) => {
+            children.forEach((c, i) => {
                 const el = c.renderNode();
                 el.setAttribute('__id', i);
                 pushElements(fragment, el);
@@ -511,11 +509,12 @@ class ForEachNode extends BlockNode {
         if (!this.fullFunc) {
             this.fullFunc = func;
         }
+        const { blocks, nodeList, children } = this;
         for (const k in map) {
             const { block, c } = this.createBlock(renderer, func, map[k], k);
-            this.blocks[k] = block;
-            this.nodeList.push(c);
-            pushChildren(this.children, c);
+            blocks[k] = block;
+            nodeList.push(c);
+            pushChildren(children, c);
         }
     }
     compare(obj, cb) {
@@ -580,15 +579,30 @@ class ForEachNode extends BlockNode {
     }
 }
 
-class MapNode extends ForEachNode {
-    constructor(model, data) {
-        super(model, data);
-        this.tag = model.tag;
-    }
+// v-for
+class ListNode extends ForNode {
     render() {
         const el = this.el || this.doc.createElement(this.tag);
-        if (this.children.length !== 0) {
-            this.children.forEach(c => {
+        renderAttrs(this, el);
+        const { children } = this;
+        if (children.length !== 0) {
+            children.forEach(c => {
+                pushElements(el, c.renderNode());
+            });
+        } else {
+            pushElements(el, this.getHolder());
+        }
+        return el;
+    }
+}
+
+// v-foreach
+class MapNode extends ForEachNode {
+    render() {
+        const el = this.el || this.doc.createElement(this.tag);
+        const { children } = this;
+        if (children.length !== 0) {
+            children.forEach(c => {
                 pushElements(el, c.renderNode());
             });
         } else {
@@ -622,7 +636,7 @@ class ComponentNode extends DomNode {
     }
 }
 
-class FragmentNode extends VNode {
+class FragmentNode extends ElementNode {
     constructor(model) {
         super(model);
     }

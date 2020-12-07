@@ -107,7 +107,7 @@ const vueact = {
             };
         };
         if (argv.length === 1 && typeof argv[0] === 'object') {
-            const { C, root: selector, components = {}, props = {} } = argv[0];
+            const { C, root: selector, components, props } = argv[0];
             return renderImpl(C, selector, components, props);
         } else {
             const [C, selector, components] = argv;

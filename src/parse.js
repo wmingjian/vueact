@@ -26,7 +26,7 @@ function ast2fun(ast, options) {
                             sb.push(JSON.stringify(node.value));
                             break;
                         case 'var':
-                            sb.push(node.name);
+                            sb.push(node.name.replace(/\bclass\b/g, '\$class'));
                             break;
                         case 'exp':
                             sb.push(node.value);
@@ -48,7 +48,7 @@ function ast2fun(ast, options) {
         for (const k in props) {
             const v = formatProp(props[k]);
             if (v !== 0) {
-                sb.push(k + ':' + v);
+                sb.push((/^[a-zA-Z_]\w*$/.test(k) ? k : JSON.stringify(k)) + ':' + v);
             }
         }
         return `{${sb.join(',')}}`;
@@ -103,22 +103,6 @@ function ast2fun(ast, options) {
         const len = a.length;
         return len === 0 ? '0' : len > 1 ? `[${s}]` : s;
     }
-    function formatForNode(node, level) {
-        const { id, type, tag, props, children } = node;
-        const sb = [`h(${id},${f(type)}${ft(tag)}${formatProps(props)}`];
-        const { list, v, i } = node;
-        sb.push(`,${list},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)}`);
-        sb.push(')');
-        return sb.join('');
-    }
-    function formatForEachNode(node, level) {
-        const { id, type, tag, props, children } = node;
-        const sb = [`h(${id},${f(type)}${ft(tag)}${formatProps(props)}`];
-        const { map, v, k } = node;
-        sb.push(`,${map},(${v}${k !== '' ? ',' + k : ''})=>${formatNodes(children, level)}`);
-        sb.push(')');
-        return sb.join('');
-    }
     function node2jsx(node, level = 0) {
         if (typeof node === 'string') {
             return JSON.stringify(node);
@@ -136,19 +120,11 @@ function ast2fun(ast, options) {
                 return formatNode({ ...node, props: { 'v-if': exp, ...props } }, level);
             }
         } else if (type === _t('for')) {
-            const { id, tag, children, list, v, i } = node;
-            if (tag === 'for') {
-                return `h(${id},${f(type)}${ft(tag)}{},${list},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)})`;
-            } else {
-                return formatForNode(node, level);
-            }
+            const { id, type, tag, props, children, name, v, i } = node;
+            return `h(${id},${f(type)}${ft(tag)}${tag === 'for' ? '{}' : formatProps(props)},${name},(${v}${i !== '' ? ',' + i : ''})=>${formatNodes(children, level)})`;
         } else if (type === _t('foreach')) {
-            const { id, tag, children, map, v, k } = node;
-            if (tag === 'foreach') {
-                return `h(${id},${f(type)}${ft(tag)}{},${map},(${v}${k !== '' ? ',' + k : ''})=>${formatNodes(children, level)})`;
-            } else {
-                return formatForEachNode(node, level);
-            }
+            const { id, type, tag, props, children, name, v, k } = node;
+            return `h(${id},${f(type)}${ft(tag)}${tag === 'foreach' ? '{}' : formatProps(props)},${name},(${v}${k !== '' ? ',' + k : ''})=>${formatNodes(children, level)})`;
         } else if (type === _t('expr')) {
             const sb = [];
             node.nodes.forEach(n => {
@@ -181,11 +157,11 @@ function ast2fun(ast, options) {
         console.error(node);
         return '';
     }
-    return 'with($.props){with($.state){\nreturn ' + node2jsx(ast) + ';\n}}';
+    return 'with($.component){with($.props){with($.state){\nreturn ' + node2jsx(ast) + ';\n}}}';
 }
 
 const parse = xml => {
-    function parseExpr(str) {
+    function parseExpr(str, inAttr = false) {
         const arr = str.split(/\{|\}/);
         const nodes = [];
         let expStart = false;
@@ -203,14 +179,14 @@ const parse = xml => {
                         nodes.push({ type: _t('exp'), value: v }); // TODO
                     }
                 } else {
-                    nodes.push({ type: _t('atom'), t: 'string', value: trim(v) });
+                    nodes.push({ type: _t('atom'), t: 'string', value: inAttr ? v : trim(v) });
                 }
             }
             expStart = !expStart;
         }
         return { id: -1, type: _t('expr'), nodes, text: str };
     }
-    function parseProp(value) {
+    function parseProp(value, inAttr) {
         let v = value, a;
         if (value.charAt(0) === '$') {
             v = { type: _t('var'), name: value.substr(1) };
@@ -220,7 +196,7 @@ const parse = xml => {
             } else if (a = /^\{(true|false)\}$/.exec(value)) {
                 v = a[1] === 'true';
             } else {
-                const expr = parseExpr(value);
+                const expr = parseExpr(value, inAttr);
                 delete expr.id;
                 v = expr;
             }
@@ -261,7 +237,7 @@ const parse = xml => {
                             vn.type = getType(tag);
                             vn = ifNode;
                         } else {
-                            props[nodeName] = nodeValue;
+                            props[nodeName === 'class' ? '$class' : nodeName] = nodeValue;
                         }
                     }
                 }
@@ -286,7 +262,7 @@ const parse = xml => {
                     const { list } = props;
                     delete props.list;
                     const a = list.substr(1).split(',');
-                    vn.list = a[0];
+                    vn.name = a[0];
                     vn.v = a[1];
                     vn.i = a.length === 3 ? a[2] : '';
                 } else if (tag === 'foreach') {
@@ -294,7 +270,7 @@ const parse = xml => {
                     const { map } = props;
                     delete props.map;
                     const a = map.substr(1).split(',');
-                    vn.map = a[0];
+                    vn.name = a[0];
                     vn.v = a[1];
                     vn.k = a.length === 3 ? a[2] : '';
                 } else if ('v-for' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
@@ -302,7 +278,7 @@ const parse = xml => {
                     const { 'v-for': list } = props;
                     delete props['v-for'];
                     const a = list.substr(1).split(',');
-                    vn.list = a[0];
+                    vn.name = a[0];
                     vn.v = a[1];
                     vn.i = a.length === 3 ? a[2] : '';
                 } else if ('v-foreach' in props && (tag === 'ul' || tag === 'ol' || tag === 'dt' || tag === 'div')) {
@@ -311,14 +287,14 @@ const parse = xml => {
                     const { 'v-foreach': map } = props;
                     delete props['v-foreach'];
                     const a = map.substr(1).split(',');
-                    vn.map = a[0];
+                    vn.name = a[0];
                     vn.v = a[1];
                     vn.k = a.length === 3 ? a[2] : '';
                 } else {
                     vn.type = getType(tag);
                 }
                 for (const k in props) {
-                    props[k] = parseProp(props[k]);
+                    props[k] = parseProp(props[k], true);
                 }
                 return vn;
             case 3: // TEXT_NODE
