@@ -35,7 +35,7 @@ class Demo extends vueact.Component {
         this.state = {
             a: 0,
             b: 1,
-            act: 'test',
+            act: 'test1',
             list: [
                 'a',
                 'b'
@@ -59,6 +59,8 @@ class Demo extends vueact.Component {
         const { a, b, arr } = this.state;
         arr.push(arr.length);
         this.setState({ a: a + 1, b: b + 1, arr });
+    }
+    handleTest1() {
     }
     handlePushItem() {
         const { list, arr } = this.state;

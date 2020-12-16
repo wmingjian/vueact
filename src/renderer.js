@@ -181,8 +181,8 @@ class Renderer {
             if (type === _t('var')) {
                 this.block.addRef(__node.name, vnode);
             } else if (type === _t('exp')) {
-                __node.value.replace(/(\w+)/g, (_0, name) => {
-                    this.block.addRef(name, vnode);
+                parseId(__node.value, (id) => {
+                    this.block.addRef(id, vnode);
                 });
             }
         }
@@ -223,28 +223,7 @@ class Renderer {
             vnode.update(props, children);
         } else {
             vnode = model.createVNode({ props, children });
-            for (const k in model.attrs) {
-                const v = model.attrs[k];
-                const t = typeof v;
-                if (isAtom(t)) {
-                } else if (v instanceof VarAttr) {
-                    this.block.addRef(v.name, v);
-                } else if (v instanceof ExprAttr) {
-                    for (const key in v.expr.deps) {
-                        this.block.addRef(key, v);
-                    }
-                } else if (v instanceof ActionAttr) {
-                    if (typeof v.action === 'string') {
-                    } else if (v.action.type === 'var') {
-                        this.block.addRef(v.action.name, v);
-                    }
-                } else {
-                    console.log(k, v);
-                }
-            }
-            children.forEach(c => {
-                pushChildren(vnode.children, c);
-            });
+            vnode.initRef(this.block);
         }
         return vnode;
     }

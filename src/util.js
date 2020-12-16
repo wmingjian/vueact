@@ -23,7 +23,16 @@ function loadXMLString(xmlString) {
     return xmlDoc;
 }
 
-const re_var = /\{([\w\.\+\-\*\/%\(\)\= ]+)\}/g;
+const re_var = /\{([\w\.\+\-\*\/%\(\)\'\"\?:\= ]+)\}/g;
+
+function parseId(text, cb) {
+    // text.replace(/(\w+)/g, (_0, id) => { cb(id); });
+    text.replace(/(?:^|[^'"\.])\b([a-zA-Z_]\w*)\b(?:[^'"]|$)/g, (_0, id) => {
+        if (id !== 'null' && id !== 'true' && id !== 'false' && id !== 'this') {
+            cb(id);
+        }
+    });
+}
 
 const uids = {
     node: 0,

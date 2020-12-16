@@ -17,6 +17,8 @@ class Demo extends vueact.Component {
             a: a + 1
         });
     }
+    handleTest() {
+    }
     render() {
         return `
             <div id="demo_var" _action="$act">

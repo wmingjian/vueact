@@ -61,12 +61,11 @@ class ExprAttr extends AttrNode {
     constructor(model, value) {
         super(model, value);
         this.attrType = 'expr';
-        this.expr = expr.parse(model, value.text); // {Expr}
-        for (const k in this.expr.deps) {
-            const v = model.getVarObj(k);
-            model.addDepAll(v.type, k); // TODO
-            this.componentProto.addRef(v.type + '#' + k, this);
-        }
+        this.expr = expr.parse(model, value.text, (name) => { // {Expr}
+            const v = model.getVarObj(name);
+            model.addDepAll(v.type, name); // TODO
+            this.componentProto.addRef(v.type + '#' + name, this);
+        });
     }
     getValue(vnode) {
         return this.expr.evaluate(vnode);

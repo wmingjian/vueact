@@ -3,6 +3,9 @@ class Expr {
         this.model = model;
         this.text = text;
         this.deps = {};
+        parseId(text, (id) => {
+            this.addDep(id);
+        });
     }
     addDep(name) {
         if (!(name in this.deps)) {
@@ -51,7 +54,11 @@ class Expr {
 }
 
 const expr = {
-    parse(model, text) {
-        return new Expr(model, text);
+    parse(model, text, cb) {
+        const expr = new Expr(model, text);
+        for (const k in expr.deps) {
+            cb(k);
+        }
+        return expr;
     }
 };

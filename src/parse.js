@@ -321,7 +321,11 @@ const parse = xml => {
     }
     function compile(ast, options) {
         const code = ast2fun(ast, options);
-        return new Function('h', '$', code);
+        const fullCode = `function render(h,$){\n${code}\n}`;
+        return {
+            code: fullCode,
+            func: new Function('h', '$', code)
+        };
     }
     const allNodes = [];
     const doc = loadXMLString(xml);
@@ -330,7 +334,7 @@ const parse = xml => {
     return {
         root: ast,
         nodes: allNodes,
-        renderDom: compile(ast, { type: true, tag: true }), // 生成完整代码
-        renderDiff: compile(ast, { type: false, tag: false, diff: true }) // 生成diff代码
+        render_create: compile(ast, { type: true, tag: true }), // 生成完整代码
+        render_update: compile(ast, { type: false, tag: false, diff: true }) // 生成diff代码
     };
 };

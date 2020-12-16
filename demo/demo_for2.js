@@ -30,7 +30,7 @@ class Demo extends vueact.Component {
     }
     render() {
         return `
-            <div id="demo_for">
+            <div id="demo_for2">
                 <div>
                     arr.length=
                     <input type="text" value="{arr.length}" readonly="{true}" style="width:40px;" />

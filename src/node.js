@@ -75,12 +75,19 @@ class VarNode extends VNode {
         this.value = data ? data.value : undefined;
     }
     render() {
-        const v = this.value;
-        if (this.el) {
-            this.el.textContent = v;
-            return this.el;
+        const t = typeof this.value;
+        let parent;
+        if (isAtom(t)) {
+            parent = this.el;
+            const v = this.value;
+            if (parent) {
+                parent.textContent = v;
+                return parent;
+            } else {
+                return this.doc.createTextNode(v);
+            }
         } else {
-            return this.doc.createTextNode(v);
+            return this.value[0].render();
         }
     }
     update(value) {
@@ -112,8 +119,31 @@ class ElementNode extends VNode {
         super(model, data);
         const { tag, attrs } = model;
         this.tag = tag; // TODO 检查tag合法性
-        this.props = { ...attrs };
-        this.children = [];
+        const children = data.children ? data.children.map(v => v) : [];
+        this.props = { ...attrs, children };
+        this.children = children;
+    }
+    initRef(block) {
+        const { attrs } = this.model;
+        for (const k in attrs) {
+            const v = attrs[k];
+            const t = typeof v;
+            if (isAtom(t)) {
+            } else if (v instanceof VarAttr) {
+                block.addRef(v.name, v);
+            } else if (v instanceof ExprAttr) {
+                for (const key in v.expr.deps) {
+                    block.addRef(key, v);
+                }
+            } else if (v instanceof ActionAttr) {
+                if (typeof v.action === 'string') {
+                } else if (v.action.type === 'var') {
+                    block.addRef(v.action.name, v);
+                } else if (v.action.type === 'expr') {
+                    // console.error(v);
+                }
+            }
+        }
     }
 }
 
@@ -128,7 +158,7 @@ function renderAttrs(node, el) {
             } else if (attr instanceof AttrNode) {
                 let at = attr.attrType;
                 if (at === 'action') {
-                    proto.addAction(node.model, attr.action, el);
+                    proto.addAction(node.model, attr.action, el, node.data.props._action);
                 } else {
                     setAttr(el, k, node.props[k]);
                     const domAttr = el.attributes[k];
@@ -385,8 +415,9 @@ class ForNode extends BlockNode {
     }
     compare(arr, cb) {
         if (arr.$delegate) {
+            const refs = this.model.getRefs();
             // 使用proxy观察数组变化，省掉数组diff逻辑
-            arr.$delegate.exec(cb, this.model.__node.i !== ''); // 数组变更的diff数据
+            arr.$delegate.exec(cb, this.model.__node.i !== '', refs); // 数组变更的diff数据
         } else {
             this.compare0(this.dataList || [], arr, cb);
             this.dataList = arr.slice(0);
@@ -518,8 +549,11 @@ class ForEachNode extends BlockNode {
         }
     }
     compare(obj, cb) {
-        // 使用proxy观察对象变化，省掉对象diff逻辑
-        obj.$delegate.exec(cb, this.model.__node.i !== ''); // 对象变更的diff数据
+        if (obj.$delegate) {
+            const refs = this.model.getRefs();
+            // 使用proxy观察对象变化，省掉对象diff逻辑
+            obj.$delegate.exec(cb, this.model.__node.k !== '', refs); // 对象变更的diff数据
+        }
     }
     removeNode(c) {
         const { blocks } = this;

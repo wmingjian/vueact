@@ -3,6 +3,9 @@ class Component {
         this.props = props;
         this.state = {};
     }
+    get children() {
+        return [];
+    }
     setState(state, cb) {
         // empty
     }
@@ -28,7 +31,8 @@ class ComponentProto {
         this.ast = null;
         this.model = this.buildModel(tpl); // {Model}
         this.renderer = new Renderer(this);
-        this.func = this.ast.renderDom;
+        this.createRender = this.ast.render_create.func;
+        this.updateRender = this.ast.render_update.func;
         this.vnode = null; // {VNode}
         this.allNodes = {};
     }
@@ -44,7 +48,7 @@ class ComponentProto {
     buildModel(tpl) {
         const ast = this.ast = parse(tpl);
         const root = ast.root;
-        return this.parseVNode(null, root);
+        return this.createModel(null, root);
     }
     parseAttrs(model, attrs) {
         for (const k in attrs) {
@@ -65,7 +69,7 @@ class ComponentProto {
         }
         return attrs;
     }
-    parseVNode(parent, node) {
+    createModel(parent, node) { // parseVNode
         let model = null;
         const t = typeof node;
         if (isAtom(t)) {
@@ -85,14 +89,28 @@ class ComponentProto {
         }
         return model;
     }
-    addAction(model, act, el) {
-        const action = typeof act === 'string' ? act : act.name;
-        el.onclick = () => {
-            const name = 'handle' + formatName(action); // act.charAt(0).toUpperCase() + act.substr(1)
-            if (name in this.c) {
-                this.c[name](action, el);
+    addAction(model, act, el, actionValue) {
+        const action = typeof act === 'string'
+            ? act
+            : act.type === 'var' || act.type === 'expr'
+                ? '' + actionValue // act.name
+                : '';
+        const findAction = (engine, action) => {
+            let name = 'handle' + formatName(action); // act.charAt(0).toUpperCase() + act.substr(1)
+            if (name in engine) {
+                return name;
+            } else {
+                name = 'do_' + action;
+                if (name in engine) {
+                    return name;
+                }
             }
-            return false;
+            throw new Error('action not found: ' + action);
+        };
+        const name = findAction(this.c, action);
+        el.onclick = () => {
+            const ret = this.c[name](action, el);
+            return typeof ret === 'boolean' ? ret : false;
         };
         this.actions[action] = { model, el };
     }
@@ -106,10 +124,10 @@ class ComponentProto {
         const { props, state } = this.c;
         const data = { proto: this, component: this.c, props, state };
         if (!this.vnode) {
-            this.vnode = this.renderer.run_render(this.func, data);
+            this.vnode = this.renderer.run_render(this.createRender, data);
             return this.vnode.renderNode();
         } else {
-            this.renderer.run_update(this.ast.renderDiff, data);
+            this.renderer.run_update(this.updateRender, data);
             return this.vnode.el;
         }
     }

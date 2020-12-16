@@ -22,51 +22,60 @@ class ArrayDelegate {
         this._cleared = false;
         this.queue.push(v);
     }
-    exec(cb, hasIdx) {
-        let n = this.len;
-        const { arr, list } = this;
-        list.length = n;
-        for (let i = 0; i < n; i++) {
-            list[i] = i;
-        }
-        let updateIdx = '';
-        this.queue.forEach(v => {
-            const { key } = v;
-            if (typeof key === 'number') {
-                cb.mod({ idx: key, old: v.old, value: v.value });
-            } else {
-                switch (key) {
-                    case 'unshift':
-                        cb.unshift(v.argv[0]);
-                        n++;
-                        list.unshift('unshift');
-                        updateIdx = 'unshift';
-                        break;
-                    case 'push':
-                        cb.push(v.argv[0]);
-                        n++;
-                        list.push('push');
-                        break;
-                    case 'shift':
-                        cb.shift();
-                        n--;
-                        list.shift();
-                        updateIdx = 'shift';
-                        break;
-                    case 'pop':
-                        cb.pop();
-                        n--;
-                        list.pop();
-                        break;
-                }
+    exec(cb, hasIdx, refs) {
+        const { arr, list, queue } = this;
+        if (queue.length) {
+            let n = this.len;
+            list.length = n;
+            for (let i = 0; i < n; i++) {
+                list[i] = i;
             }
-        });
-        if (hasIdx && updateIdx !== '') {
-            list.forEach((n, i) => {
-                if (i === 0 && updateIdx === 'shift' || i !== 0) { // typeof n === 'number'
-                    cb.mod({ idx: i/* , old: arr[i] */, value: arr[i] });
+            let updateIdx = '';
+            queue.forEach(v => {
+                const { key } = v;
+                if (typeof key === 'number') {
+                    cb.mod({ idx: key, old: v.old, value: v.value });
+                } else {
+                    switch (key) {
+                        case 'unshift':
+                            cb.unshift(v.argv[0]);
+                            n++;
+                            list.unshift('unshift');
+                            updateIdx = 'unshift';
+                            break;
+                        case 'push':
+                            cb.push(v.argv[0]);
+                            n++;
+                            list.push('push');
+                            break;
+                        case 'shift':
+                            cb.shift();
+                            n--;
+                            list.shift();
+                            updateIdx = 'shift';
+                            break;
+                        case 'pop':
+                            cb.pop();
+                            n--;
+                            list.pop();
+                            break;
+                    }
                 }
             });
+            if (hasIdx && updateIdx !== '') {
+                list.forEach((n, i) => {
+                    if (i === 0 && updateIdx === 'shift' || i !== 0) { // typeof n === 'number'
+                        cb.mod({ idx: i/* , old: arr[i] */, value: arr[i] });
+                    }
+                });
+            }
+        } else {
+            const keys = Object.keys(refs);
+            if (keys.length) {
+                arr.forEach((v, i) => {
+                    cb.mod({ idx: i, old: arr[i], value: arr[i] });
+                });
+            }
         }
     }
     clear() {
@@ -89,21 +98,31 @@ class ObjectDelegate {
         this._cleared = false;
         this.queue.push(v);
     }
-    exec(cb) {
-        this.queue.forEach(v => {
-            const { act, k } = v;
-            switch (act) {
-                case 'add':
-                    cb.add(k, v.v);
-                    break;
-                case 'mod':
-                    cb.mod(k, v.v, v.old);
-                    break;
-                case 'del':
-                    cb.del(k, v.idx, v.old);
-                    break;
+    exec(cb, hasKey, refs) {
+        const { obj, queue } = this;
+        if (queue.length) {
+            queue.forEach(v => {
+                const { act, k } = v;
+                switch (act) {
+                    case 'add':
+                        cb.add(k, v.v);
+                        break;
+                    case 'mod':
+                        cb.mod(k, v.v, v.old);
+                        break;
+                    case 'del':
+                        cb.del(k, v.idx, v.old);
+                        break;
+                }
+            });
+        } else {
+            const keys = Object.keys(refs);
+            if (keys.length) {
+                for (const k in obj) {
+                    cb.mod(k, obj[k], obj[k]);
+                }
             }
-        });
+        }
     }
     clear() {
         if (!this._cleared) {
