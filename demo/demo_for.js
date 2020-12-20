@@ -38,6 +38,12 @@ class Demo extends vueact.Component {
         arr.pop();
         this.setState({ arr });
     }
+    handleSplice() {
+        const { arr } = this.state;
+        arr.splice(1, 0, { id: 99, name: '$$'});
+        arr.splice(1, 0, { id: 97, name: '#1'}, { id: 98, name: '#2'});
+        this.setState({ arr });
+    }
     handleSet() {
         const { arr } = this.state;
         // arr[0].name = 'abc';
@@ -54,6 +60,7 @@ class Demo extends vueact.Component {
                     <input type="button" value="push" _action="push" />
                     <input type="button" value="shift" _action="shift" disabled="{arr.length === 0}" />
                     <input type="button" value="pop" _action="pop" disabled="{arr.length === 0}" />
+                    <input type="button" value="splice" _action="splice" disabled="{arr.length === 0}" />
                     <input type="button" value="set" _action="set" disabled="{arr.length === 0}" />
                 </div>
                 <ol class="x-list">

@@ -437,6 +437,7 @@ class ForNode extends BlockNode {
     }
     renderDiff(renderer, list, func) {
         const { children, nodeList, blocks, holder } = this;
+        const { nodes } = this.model;
         let n0;
         const { parentNode } = nodeList.length === 0 // 如果删空了，会找不到parentNode
             ? holder
@@ -444,28 +445,72 @@ class ForNode extends BlockNode {
                 n0 = nodeList[0],
                 n0 instanceof Array ? n0[0].el : n0.el
             );
-        this.compare(list, {
-            unshift: (value) => {
-                const { block, c } = this.createBlock(renderer, func, value, 0);
-                const len = nodeList.length;
-                blocks.unshift(block);
-                nodeList.unshift(c);
-                if (len === 0) {
-                    parentNode.removeChild(holder);
+        const insert = (act, index, howmany, items) => {
+            const n = nodes.length;
+            const bs = [], cs = [], a = [], e = [];
+            items.forEach((item, i) => {
+                const { block, c } = this.createBlock(renderer, func, item, index + i);
+                bs.push(block);
+                cs.push(c);
+            });
+            cs.forEach(v => {
+                if (v instanceof Array) {
+                    v.forEach(vn => {
+                        a.push(vn);
+                        e.push(vn.renderNode());
+                    })
+                } else {
+                    a.push(v);
+                    e.push(v.renderNode());
                 }
-                unshiftChildren(children, c);
-                unshiftElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+            });
+            const len = nodeList.length;
+            if (act === 'unshift') {
+                const ref = len === 0 ? holder : children[index * n].el;
+                blocks.unshift(...bs);
+                nodeList.unshift(...cs);
+                // dataList.unshift(...items);
+                children.unshift(...a);
+                insertElements(parentNode, e, ref);
+            } else if (act === 'push') {
+                blocks.push(...bs);
+                nodeList.push(...cs);
+                // dataList.push(...items);
+                children.push(...a);
+                pushElements(parentNode, e);
+            } else if (act === 'splice') {
+                const ref = index < len ? children[index * n].el : null;
+                blocks.splice(index, howmany, ...bs);
+                const c = nodeList.splice(index, howmany, ...cs);
+                children.splice(index, howmany, ...a);
+                insertElements(parentNode, e, ref);
+                this.removeNode(c);
+            }
+            if (len === 0 && items.length > howmany) {
+                parentNode.removeChild(holder);
+            }
+        };
+        this.compare(/* dataList, */list, {
+            unshift: (...items) => {
+                insert('unshift', 0, 0, items);
             },
-            push: (value) => {
-                const { block, c } = this.createBlock(renderer, func, value, nodeList.length);
-                const len = nodeList.length;
-                blocks.push(block);
-                nodeList.push(c);
-                if (len === 0) {
-                    parentNode.removeChild(holder);
-                }
-                pushChildren(children, c);
-                pushElements(parentNode, c instanceof Array ? c.map(v => v.renderNode()) : c.renderNode());
+            push: (...items) => {
+                insert('push', nodeList.length, 0, items);
+            },
+            splice: (index, howmany, ...items) => {
+                insert('splice', index, howmany, items);
+            },
+            shift: () => {
+                const c = nodeList.shift();
+                this.removeNode(c);
+                blocks.shift();
+                nodes.forEach(v => children.shift()); // 更新children
+            },
+            pop: () => {
+                const c = nodeList.pop();
+                this.removeNode(c);
+                blocks.pop();
+                nodes.forEach(v => children.pop()); // 更新children
             },
             add: ({ idx, value }) => { // v, i, act
                 const { block, c } = this.createBlock(renderer, func, value, idx);
@@ -482,18 +527,6 @@ class ForNode extends BlockNode {
                 renderer.openBlock(blocks[idx]);
                 func(value, idx);
                 renderer.closeBlock();
-            },
-            shift: () => {
-                const c = nodeList.shift();
-                this.removeNode(c);
-                blocks.shift();
-                // TODO 更新children
-            },
-            pop: () => {
-                const c = nodeList.pop();
-                this.removeNode(c);
-                blocks.pop();
-                // TODO 更新children
             },
             // splice
             del: ({ idx }) => { // TODO

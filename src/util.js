@@ -59,9 +59,7 @@ function formatName(name) {
 function unshiftChildren(children, c) {
     if (c) {
         if (c instanceof Array) {
-            for (let i = c.length - 1; i > 0; i--) {
-                children.unshift(c[i]);
-            }
+            children.unshift(...c);
         } else {
             children.unshift(c);
         }
@@ -78,9 +76,8 @@ function pushChildren(children, c) {
     }
 }
 
-function unshiftElements(parent, el) {
+function insertElements(parent, el, ref) {
     if (el) {
-        const ref = parent.firstChild;
         if (el instanceof Array) {
             if (ref) {
                 el.forEach(v => parent.insertBefore(v, ref));
@@ -95,6 +92,10 @@ function unshiftElements(parent, el) {
             }
         }
     }
+}
+
+function unshiftElements(parent, el) {
+    insertElements(parent, el, parent.firstChild);
 }
 
 function pushElements(parent, el) {

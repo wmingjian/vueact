@@ -4,6 +4,7 @@ const arrProps = {
     pop: 1,
     unshift: 1,
     shift: 1,
+    splice: 1,
     constructor: 0,
     slice: 0,
     forEach: 0
@@ -30,7 +31,8 @@ class ArrayDelegate {
             for (let i = 0; i < n; i++) {
                 list[i] = i;
             }
-            let updateIdx = '';
+            let updateIdx = '',
+                start = 0;
             queue.forEach(v => {
                 const { key } = v;
                 if (typeof key === 'number') {
@@ -38,44 +40,51 @@ class ArrayDelegate {
                 } else {
                     switch (key) {
                         case 'unshift':
-                            cb.unshift(v.argv[0]);
-                            n++;
-                            list.unshift('unshift');
-                            updateIdx = 'unshift';
-                            break;
                         case 'push':
-                            cb.push(v.argv[0]);
-                            n++;
-                            list.push('push');
+                            const { argv } = v;
+                            const l = argv.length;
+                            cb[key](...argv);
+                            n += l;
+                            for (let i = 0; i < l; i++) {
+                                list[key](key);
+                            }
+                            if (key === 'unshift') {
+                                updateIdx = key;
+                                start = l;
+                            }
                             break;
                         case 'shift':
-                            cb.shift();
-                            n--;
-                            list.shift();
-                            updateIdx = 'shift';
-                            break;
                         case 'pop':
-                            cb.pop();
+                            cb[key]();
                             n--;
-                            list.pop();
+                            list[key]();
+                            if (key === 'shift') {
+                                updateIdx = key;
+                                start = 0;
+                            }
+                            break;
+                        case 'splice': // delete,insert,replace
+                            // arrayObject.splice(index,howmany,item1,.....,itemX)
+                            const [ index, howmany, ...items] = v.argv;
+                            cb.splice(index, howmany, ...items);
+                            n -= howmany - items.length;
+                            list.splice(index, howmany, ...items);
+                            updateIdx = key;
+                            start = index;
                             break;
                     }
                 }
             });
             if (hasIdx && updateIdx !== '') {
-                list.forEach((n, i) => {
-                    if (i === 0 && updateIdx === 'shift' || i !== 0) { // typeof n === 'number'
-                        cb.mod({ idx: i/* , old: arr[i] */, value: arr[i] });
-                    }
-                });
+                for (let i = start; i < n; i++) {
+                    let v = arr[i];
+                    cb.mod({ idx: i, old: v, value: v });
+                }
             }
-        } else {
-            const keys = Object.keys(refs);
-            if (keys.length) {
-                arr.forEach((v, i) => {
-                    cb.mod({ idx: i, old: arr[i], value: arr[i] });
-                });
-            }
+        } else if (refs.length) { // 有引用外层作用域的变量
+            arr.forEach((v, i) => {
+                cb.mod({ idx: i, old: v, value: v });
+            });
         }
     }
     clear() {
@@ -115,12 +124,9 @@ class ObjectDelegate {
                         break;
                 }
             });
-        } else {
-            const keys = Object.keys(refs);
-            if (keys.length) {
-                for (const k in obj) {
-                    cb.mod(k, obj[k], obj[k]);
-                }
+        } else if (refs.length) {
+            for (const k in obj) {
+                cb.mod(k, obj[k], obj[k]);
             }
         }
     }

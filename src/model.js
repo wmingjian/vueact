@@ -178,8 +178,7 @@ class Model {
             }
         }
         // console.log('getRefs', refs);
-        this.allRefs = refs;
-        return refs;
+        return this.allRefs = Object.keys(refs);
     }
 }
 
@@ -246,6 +245,7 @@ class BlockModel extends ElementModel {
         this.all = []; // 全部子节点
         this.allD = []; // 全部动态节点
         this.refs = {};
+        this.allRefs = null;
     }
 }
 

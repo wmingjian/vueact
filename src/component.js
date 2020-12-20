@@ -142,7 +142,24 @@ class ComponentProto {
         const { c } = this;
         const s = c.state;
         for (const k in newState) {
-            s[k] = newState[k];
+            const v = s[k];
+            const V = newState[k];
+            const t = typeof v;
+            if (isAtom(t) || v === V) {
+                s[k] = V;
+            } else if (v instanceof Array) {
+                const hash = {};
+                v.forEach(item => {
+                    hash[item.path] = item;
+                });
+                V.forEach(item => {
+                    hash[item.path] = item;
+                });
+            } else if (v instanceof Object && v !== null) {
+                for (const key in V) {
+                    v[key] = V[key];
+                }
+            }
         }
         this.ctx.addTask({
             cp: this,
